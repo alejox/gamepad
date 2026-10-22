@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "server-dry",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:dry", "-w", "@gamepad/server"],
+      "env": { "GAMEPAD_PIN": "246810" },
+      "port": 7531
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "@gamepad/mobile"],
+      "port": 5173
+    }
+  ]
+}

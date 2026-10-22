@@ -163,5 +163,13 @@ Route per task: delegated writer (multi-file, non-trivial).
 
 ## Next step
 
-Browser/multitouch check of the mobile UI against the dry-run server; fix
-the server vitest source resolution; APK build on a machine with JDK 21.
+Done by parent: server vitest resolves shared from source (41b5034; 47 passed
+with `packages/shared/dist` removed). Browser check at 844x390 against the
+dry-run server: pairing OK, latency shown, A → `space`, D-pad slide → `right`,
+right stick → aggregated mouse moves, left stick up → `w`, settings open/close
+keeps the session, Geometric skin renders. Not verifiable here: real
+multitouch (needs a phone), real robotjs input (needs macOS Accessibility
+grant), APK build (needs JDK 21 + Android SDK).
+
+Remaining: manual test on a phone via `npm run dev -w @gamepad/mobile`
+(Network URL) and real input without `--dry-run`; APK build.
