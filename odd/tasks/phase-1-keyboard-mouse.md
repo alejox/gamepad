@@ -84,10 +84,10 @@ PR slicing decided when a remote exists. Forecast: ~1500–2000 authored lines.
 - [x] T1 Monorepo scaffold + shared protocol with tests
 - [x] T2 Server domain (state diffing, stick→keys, mouse motion) with tests
 - [x] T3 Server adapters (ws + PIN pairing, robotjs driver, logging driver, CLI)
-- [ ] T4 Mobile scaffold (Vue/Vite/Pinia/Capacitor, landscape) + connection
-- [ ] T5 Gamepad UI: multitouch buttons, virtual sticks, haptics
-- [ ] T6 Skins (5) + settings (mapping, skin, sensitivity) persisted
-- [ ] T7 README: run server, grant macOS permission, build APK
+- [x] T4 Mobile scaffold (Vue/Vite/Pinia/Capacitor, landscape) + connection
+- [x] T5 Gamepad UI: multitouch buttons, virtual sticks, haptics
+- [x] T6 Skins (5) + settings (mapping, skin, sensitivity) persisted
+- [x] T7 README: run server, grant macOS permission, build APK
 
 Route per task: delegated writer (multi-file, non-trivial).
 
@@ -125,9 +125,43 @@ Route per task: delegated writer (multi-file, non-trivial).
   connection only); real robotjs input not exercised (needs macOS
   Accessibility grant, manual check).
 
+- T4 `9506ff9` feat(mobile) scaffold + connection — route: delegated writer.
+  RED: connectionStore.test.ts failed with "Cannot find module
+  ../src/domain/reconnect.js". GREEN: mobile 9 passed. vue-tsc cannot run on
+  TypeScript 7 (no JS API); `scripts/vue-tsc.cjs` runs it against a
+  workspace-local TypeScript 6.0.3 (verified it reports injected errors).
+  `npx cap add android` OK; manifest has `usesCleartextTraffic="true"` and
+  `screenOrientation="sensorLandscape"`; `server.androidScheme: "http"`
+  (option name verified in @capacitor/cli 8.5.3 declarations).
+- T5 `e0b960b` feat(mobile) gamepad UI — route: delegated writer. RED: dpad and
+  stick tests failed with "Cannot find module" (domain absent). GREEN: mobile
+  28 passed. L3/R3 = small buttons under each stick (double-tap conflicts with
+  stick movement). Browser/multitouch behaviour not exercised by the writer.
+- T6 `0406367` feat skins + settings + mouseSensitivity — route: delegated
+  writer. RED: shared 5 failed (mouseSensitivity), server 3 failed
+  (per-session sensitivity, got 20 px/tick instead of 5), logging aggregation
+  1 failed, mobile 5 failed (settings fields, hello/mapping sensitivity).
+  GREEN: shared 44, server 47, mobile 34 passed. Protocol choice: optional
+  field on hello/mapping instead of a new message, because older servers drop
+  unknown fields but answer an unknown message type with bad_message.
+- T7 `27f6001` docs README — JDK 21 verified from Capacitor 8 gradle
+  (`JavaVersion.VERSION_21`).
+- Verification (after T7): `npm install` OK; `npm run typecheck` exit 0;
+  `npm test` 44/47/34 passed; `npm run build` exit 0; `npx cap sync android`
+  OK. E2E: dry-run server + Node `ws` client with `mouseSensitivity: 800`
+  received welcome + pong; log showed key down/up space and aggregated mouse
+  lines (~4/s); disconnect released keys. Vite dev server served HTTP 200,
+  then both were stopped with SIGINT. APK build not possible (no JDK/SDK).
+- Known gap: `apps/server/vitest.config.ts` resolves `@gamepad/shared` from
+  `dist` (node/SSR environment ignores `resolve.conditions`), so server tests
+  use a stale shared build until `npm run build`. Mobile fixed with
+  `ssr.resolve.{conditions,externalConditions}`; the server config was outside
+  the writer's edit surface.
+
 - Engram mirror `odd/phase-1-keyboard-mouse/tasks`: PENDING (host session
   registration failed on first save).
 
 ## Next step
 
-T4 (mobile scaffold + connection).
+Browser/multitouch check of the mobile UI against the dry-run server; fix
+the server vitest source resolution; APK build on a machine with JDK 21.
