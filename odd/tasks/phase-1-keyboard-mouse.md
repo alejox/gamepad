@@ -83,7 +83,7 @@ PR slicing decided when a remote exists. Forecast: ~1500–2000 authored lines.
 
 - [x] T1 Monorepo scaffold + shared protocol with tests
 - [x] T2 Server domain (state diffing, stick→keys, mouse motion) with tests
-- [ ] T3 Server adapters (ws + PIN pairing, robotjs driver, logging driver, CLI)
+- [x] T3 Server adapters (ws + PIN pairing, robotjs driver, logging driver, CLI)
 - [ ] T4 Mobile scaffold (Vue/Vite/Pinia/Capacitor, landscape) + connection
 - [ ] T5 Gamepad UI: multitouch buttons, virtual sticks, haptics
 - [ ] T6 Skins (5) + settings (mapping, skin, sensitivity) persisted
@@ -112,10 +112,22 @@ Route per task: delegated writer (multi-file, non-trivial).
   files failed with "Cannot find module" (domain absent). GREEN: server 22
   passed, shared 39 passed; root `typecheck` and `build` clean.
   stickToDirections is angle-based (8 x 45-degree sectors, radial deadzone).
+- T3 `cd8e0e3` feat(server) adapters — route: delegated writer. RED: 3 new test
+  files failed with "Cannot find module" (config, LoggingInputDriver,
+  WebSocketGamepadServer). GREEN: server 42 passed (stable over 5 runs),
+  shared 39 passed. Root `npm install` OK (install scripts for robotjs,
+  esbuild, fsevents left blocked; robotjs prebuilt loads via
+  node-gyp-build, verified by loading `RobotInputDriver` from dist).
+  `npm run typecheck` exit 0, `npm run build` exit 0. `npm run start:dry`
+  printed banner (LAN IPv4:port, PIN, dry-run mode) and released input on
+  SIGINT; `node dist/main.js --dry-run` also starts.
+  Known gaps: no PIN brute-force rate limiting (one attempt per
+  connection only); real robotjs input not exercised (needs macOS
+  Accessibility grant, manual check).
 
 - Engram mirror `odd/phase-1-keyboard-mouse/tasks`: PENDING (host session
   registration failed on first save).
 
 ## Next step
 
-T1.
+T4 (mobile scaffold + connection).
