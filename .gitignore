@@ -4,3 +4,6 @@ dist/
 .DS_Store
 coverage/
 .env
+
+# Locally built APKs
+dist-apk/

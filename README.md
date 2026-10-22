@@ -94,6 +94,20 @@ to landscape and connect. Mobile Chrome works fine; haptics fall back to
 Install **JDK 21** (required by Capacitor 8's Gradle config) and Android
 Studio / the Android SDK (`ANDROID_HOME` set), then:
 
+Without Android Studio on macOS (verified):
+
+```bash
+brew install openjdk@21
+brew install --cask android-commandlinetools
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21
+export ANDROID_HOME=$HOME/Library/Android/sdk
+sdkmanager --sdk_root=$ANDROID_HOME --licenses
+sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+echo "sdk.dir=$ANDROID_HOME" > apps/mobile/android/local.properties
+```
+
+Build:
+
 ```bash
 npm run build -w @gamepad/mobile
 cd apps/mobile && npx cap sync android

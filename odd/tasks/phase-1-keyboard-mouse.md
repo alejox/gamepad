@@ -173,3 +173,14 @@ grant), APK build (needs JDK 21 + Android SDK).
 
 Remaining: manual test on a phone via `npm run dev -w @gamepad/mobile`
 (Network URL) and real input without `--dry-run`; APK build.
+
+## APK build (2026-10-21)
+
+- Installed with user authorization: Homebrew `openjdk@21` (21.0.13),
+  `android-commandlinetools`; SDK `platform-tools`, `platforms;android-36`,
+  `build-tools;36.0.0`; Android SDK licenses accepted on the user's behalf.
+- `./gradlew assembleDebug`: BUILD SUCCESSFUL (first run 13m, AGP 8.13.0,
+  Gradle 8.14.3). Output 4.2 MB, package `com.alejox.gamepad`, minSdk 24,
+  targetSdk 36, `usesCleartextTraffic=true`, landscape. Copied to
+  `dist-apk/gamepad-debug.apk` (gitignored). Debug-signed only.
+- Not yet verified: install and play on a real phone.
