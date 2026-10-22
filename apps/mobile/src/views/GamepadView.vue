@@ -1,32 +1,116 @@
 <script setup lang="ts">
+import type { ButtonId, StickId } from "@gamepad/shared";
+import { computed } from "vue";
+import { tapFeedback } from "../adapters/haptics.js";
+import DPad from "../components/DPad.vue";
+import FaceLabel from "../components/FaceLabel.vue";
+import PadButton from "../components/PadButton.vue";
+import VirtualStick from "../components/VirtualStick.vue";
+import type { Vector } from "../domain/stick.js";
 import { useConnectionStore } from "../stores/connection.js";
+import { useSettingsStore } from "../stores/settings.js";
+
+const props = withDefaults(defineProps<{ glyphs?: boolean }>(), { glyphs: false });
+const emit = defineEmits<{ settings: [] }>();
 
 const connection = useConnectionStore();
+const settingsStore = useSettingsStore();
+
+const resetKey = computed(() => connection.releaseEpoch);
+const paired = computed(() => connection.status === "paired");
+const statusText = computed(() => {
+  if (connection.reconnecting) return "Reconnecting…";
+  return connection.latencyMs === null ? "– ms" : `${connection.latencyMs} ms`;
+});
+
+function onButton(id: ButtonId, down: boolean): void {
+  if (down && settingsStore.settings.haptics) tapFeedback();
+  connection.pressButton(id, down);
+}
+
+function onStick(id: StickId, vector: Vector): void {
+  connection.moveStick(id, vector.x, vector.y);
+}
+
+const faces = ["y", "x", "b", "a"] as const;
 </script>
 
 <template>
-  <section class="pad no-select">
-    <span class="dot" :class="{ ok: connection.status === 'paired' }" />
-    <span>{{ connection.reconnecting ? "Reconnecting…" : `${connection.latencyMs ?? "–"} ms` }}</span>
-    <button type="button" @pointerdown.prevent="connection.disconnect()">Disconnect</button>
+  <section class="gamepad no-select">
+    <div class="side left">
+      <div class="shoulders">
+        <PadButton class="shoulder trigger" label="L2" :reset-key="resetKey" @change="onButton('l2', $event)" />
+        <PadButton class="shoulder bumper" label="L1" :reset-key="resetKey" @change="onButton('l1', $event)" />
+      </div>
+      <div class="cluster">
+        <DPad class="cluster-top" :reset-key="resetKey" @button="onButton" />
+        <div class="cluster-bottom stick-wrap">
+          <VirtualStick
+            label="Left stick"
+            :deadzone="settingsStore.settings.stickDeadzone"
+            :reset-key="resetKey"
+            @move="onStick('L', $event)"
+          />
+          <PadButton class="small thumb" label="L3" :reset-key="resetKey" @change="onButton('l3', $event)" />
+        </div>
+      </div>
+    </div>
+
+    <div class="center">
+      <div class="status">
+        <span class="dot" :class="{ ok: paired }" :aria-label="paired ? 'Connected' : 'Not connected'" />
+        <span class="latency">{{ statusText }}</span>
+      </div>
+      <div class="menu">
+        <PadButton class="small" label="Select" :reset-key="resetKey" @change="onButton('select', $event)" />
+        <PadButton class="small" label="Start" :reset-key="resetKey" @change="onButton('start', $event)" />
+      </div>
+      <div class="tools">
+        <button type="button" class="tool" aria-label="Settings" @click="emit('settings')">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2" />
+            <path
+              d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"
+            />
+          </svg>
+        </button>
+        <button type="button" class="tool" aria-label="Disconnect" @click="connection.disconnect()">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v8M6.3 6.8a8 8 0 1 0 11.4 0" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="side right">
+      <div class="shoulders">
+        <PadButton class="shoulder bumper" label="R1" :reset-key="resetKey" @change="onButton('r1', $event)" />
+        <PadButton class="shoulder trigger" label="R2" :reset-key="resetKey" @change="onButton('r2', $event)" />
+      </div>
+      <div class="cluster">
+        <div class="cluster-top faces">
+          <PadButton
+            v-for="face in faces"
+            :key="face"
+            class="face"
+            :class="`face-${face}`"
+            :label="face.toUpperCase()"
+            :reset-key="resetKey"
+            @change="onButton(face, $event)"
+          >
+            <FaceLabel :button="face" :glyphs="props.glyphs" />
+          </PadButton>
+        </div>
+        <div class="cluster-bottom stick-wrap">
+          <VirtualStick
+            label="Right stick"
+            :deadzone="settingsStore.settings.stickDeadzone"
+            :reset-key="resetKey"
+            @move="onStick('R', $event)"
+          />
+          <PadButton class="small thumb" label="R3" :reset-key="resetKey" @change="onButton('r3', $event)" />
+        </div>
+      </div>
+    </div>
   </section>
 </template>
-
-<style scoped>
-.pad {
-  height: 100%;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-}
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #ff5a5a;
-}
-.dot.ok {
-  background: #3ddc84;
-}
-</style>

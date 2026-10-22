@@ -1,0 +1,281 @@
+.gamepad {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 2vmin;
+  padding: max(3vmin, env(safe-area-inset-top)) max(4vmin, env(safe-area-inset-right))
+    max(3vmin, env(safe-area-inset-bottom)) max(4vmin, env(safe-area-inset-left));
+  background: var(--pad-bg);
+  color: var(--pad-fg);
+  font-family: var(--font-label);
+  touch-action: none;
+}
+
+.control {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform 60ms ease-out, filter 60ms ease-out;
+}
+
+/* Driven by state, not :active, which is unreliable with multitouch. */
+.pressed {
+  transform: scale(0.95);
+  filter: brightness(0.7);
+}
+
+.side {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 2vmin;
+  min-width: 0;
+}
+
+.shoulders {
+  display: flex;
+  gap: 2vmin;
+}
+.right .shoulders {
+  justify-content: flex-end;
+}
+
+.cluster {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+}
+.left .cluster-top {
+  grid-area: 1 / 1 / 2 / 3;
+  justify-self: start;
+}
+.left .cluster-bottom {
+  grid-area: 2 / 2;
+}
+.right .cluster-top {
+  grid-area: 1 / 1 / 2 / 3;
+  justify-self: end;
+}
+.right .cluster-bottom {
+  grid-area: 2 / 1;
+}
+
+.pad-button {
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shoulder {
+  width: 18vmin;
+  height: 10vmin;
+  background: var(--shoulder-bg);
+  color: var(--shoulder-fg);
+  border: var(--shoulder-border);
+  border-radius: var(--shoulder-radius);
+  font-size: 3.6vmin;
+}
+.trigger {
+  border-radius: var(--shoulder-radius) var(--shoulder-radius) 4px 4px;
+}
+
+.small {
+  min-width: 14vmin;
+  height: 7vmin;
+  padding: 0 2vmin;
+  border-radius: 999px;
+  background: var(--small-bg);
+  color: var(--small-fg);
+  border: var(--small-border);
+  font-size: 2.8vmin;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* D-pad: one touch zone with four drawn arms. */
+.dpad {
+  position: relative;
+  width: 36vmin;
+  height: 36vmin;
+}
+.dpad-arm {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 33.4%;
+  height: 33.4%;
+  background: var(--dpad-bg);
+  color: var(--dpad-fg);
+  border: var(--dpad-border);
+  font-size: 3.4vmin;
+  transition: filter 60ms ease-out;
+}
+.dpad-arm.pressed {
+  transform: none;
+  filter: brightness(1.6);
+}
+.dpad_up {
+  left: 33.3%;
+  top: 0;
+  border-bottom: 0;
+  border-radius: var(--dpad-radius) var(--dpad-radius) 0 0;
+}
+.dpad_down {
+  left: 33.3%;
+  bottom: 0;
+  border-top: 0;
+  border-radius: 0 0 var(--dpad-radius) var(--dpad-radius);
+}
+.dpad_left {
+  top: 33.3%;
+  left: 0;
+  border-right: 0;
+  border-radius: var(--dpad-radius) 0 0 var(--dpad-radius);
+}
+.dpad_right {
+  top: 33.3%;
+  right: 0;
+  border-left: 0;
+  border-radius: 0 var(--dpad-radius) var(--dpad-radius) 0;
+}
+.dpad-hub {
+  position: absolute;
+  inset: 33.3%;
+  background: var(--dpad-bg);
+  pointer-events: none;
+}
+
+/* Face buttons in a diamond. */
+.faces {
+  position: relative;
+  width: 38vmin;
+  height: 38vmin;
+}
+.face {
+  position: absolute;
+  width: 13vmin;
+  height: 13vmin;
+  border-radius: var(--face-radius);
+  border: var(--btn-border);
+  box-shadow: var(--btn-shadow);
+  font-size: 5vmin;
+}
+.face-y {
+  left: calc(50% - 6.5vmin);
+  top: 0;
+  background: var(--face-y-bg);
+  color: var(--face-y-fg);
+}
+.face-a {
+  left: calc(50% - 6.5vmin);
+  bottom: 0;
+  background: var(--face-a-bg);
+  color: var(--face-a-fg);
+}
+.face-x {
+  left: 0;
+  top: calc(50% - 6.5vmin);
+  background: var(--face-x-bg);
+  color: var(--face-x-fg);
+}
+.face-b {
+  right: 0;
+  top: calc(50% - 6.5vmin);
+  background: var(--face-b-bg);
+  color: var(--face-b-fg);
+}
+.glyph {
+  width: 62%;
+  height: 62%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Sticks: the base stays where it is drawn; the knob follows the finger. */
+.stick-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 1.5vmin;
+}
+.stick {
+  width: 30vmin;
+  height: 30vmin;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--stick-base-bg);
+  border: var(--stick-base-border);
+}
+.stick-knob {
+  width: 40%;
+  height: 40%;
+  border-radius: 50%;
+  background: var(--knob-bg);
+  border: var(--knob-border);
+  pointer-events: none;
+  will-change: transform;
+}
+.stick.active .stick-knob {
+  filter: brightness(1.25);
+}
+.thumb {
+  min-width: 10vmin;
+  height: 6vmin;
+}
+
+/* Centre column. */
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1vmin 0;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 1.5vmin;
+  font-size: 3vmin;
+  font-variant-numeric: tabular-nums;
+}
+.dot {
+  width: 2.4vmin;
+  height: 2.4vmin;
+  border-radius: 50%;
+  background: #ff5a5a;
+  box-shadow: 0 0 6px #ff5a5a;
+}
+.dot.ok {
+  background: #3ddc84;
+  box-shadow: 0 0 6px #3ddc84;
+}
+.menu,
+.tools {
+  display: flex;
+  gap: 2vmin;
+}
+.tool {
+  width: 9vmin;
+  height: 9vmin;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: var(--small-border);
+  background: var(--small-bg);
+  color: var(--small-fg);
+  padding: 0;
+}
+.tool svg {
+  width: 60%;
+  height: 60%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}

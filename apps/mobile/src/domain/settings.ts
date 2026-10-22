@@ -2,7 +2,12 @@ import { DEFAULT_MAPPING, type KeyMapping, parseMapping } from "@gamepad/shared"
 
 export interface Settings {
   mapping: KeyMapping;
+  haptics: boolean;
+  /** Client-side stick deadzone; smaller vectors are sent as zero. */
+  stickDeadzone: number;
 }
+
+export const DEADZONE_RANGE = { min: 0, max: 0.5 } as const;
 
 export interface ServerAddress {
   host: string;
@@ -16,7 +21,7 @@ export function cloneMapping(mapping: KeyMapping): KeyMapping {
 }
 
 export function defaultSettings(): Settings {
-  return { mapping: cloneMapping(DEFAULT_MAPPING) };
+  return { mapping: cloneMapping(DEFAULT_MAPPING), haptics: true, stickDeadzone: 0.08 };
 }
 
 function parseJson(raw: string | null): Record<string, unknown> | null {
@@ -36,6 +41,11 @@ export function parseStoredSettings(raw: string | null): Settings {
   if (!stored) return settings;
   const mapping = parseMapping(stored.mapping);
   if (mapping) settings.mapping = mapping;
+  if (typeof stored.haptics === "boolean") settings.haptics = stored.haptics;
+  const deadzone = stored.stickDeadzone;
+  if (typeof deadzone === "number" && deadzone >= DEADZONE_RANGE.min && deadzone <= DEADZONE_RANGE.max) {
+    settings.stickDeadzone = deadzone;
+  }
   return settings;
 }
 

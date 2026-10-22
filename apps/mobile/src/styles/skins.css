@@ -1,0 +1,45 @@
+/*
+ * Skins are sets of CSS custom properties selected by [data-skin] on <html>.
+ * Components only read variables; they never know which skin is active.
+ */
+:root,
+[data-skin="neon"] {
+  --pad-bg: radial-gradient(circle at 50% 40%, #1a1f2b 0%, #0c0e13 70%),
+    repeating-linear-gradient(45deg, #0f1218 0 4px, #0b0d12 4px 8px);
+  --pad-fg: #8fd8ff;
+  --accent: #3fb8ff;
+  --font-label: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --btn-bg: radial-gradient(circle at 35% 30%, #3a3f4b 0%, #121419 55%, #050608 100%);
+  --btn-border: 2px solid #2aa8ff;
+  --btn-shadow: 0 0 10px rgb(42 168 255 / 45%), inset 0 1px 2px rgb(255 255 255 / 18%);
+  --btn-fg: #8fd8ff;
+  --face-radius: 50%;
+  --face-a-bg: var(--btn-bg);
+  --face-b-bg: var(--btn-bg);
+  --face-x-bg: var(--btn-bg);
+  --face-y-bg: var(--btn-bg);
+  --face-a-fg: var(--btn-fg);
+  --face-b-fg: var(--btn-fg);
+  --face-x-fg: var(--btn-fg);
+  --face-y-fg: var(--btn-fg);
+
+  --dpad-bg: linear-gradient(160deg, #262a33, #08090c);
+  --dpad-fg: #8fd8ff;
+  --dpad-border: 2px solid #2aa8ff;
+  --dpad-radius: 8px;
+
+  --shoulder-bg: linear-gradient(180deg, #2a2f3a, #0b0c10);
+  --shoulder-fg: #8fd8ff;
+  --shoulder-border: 2px solid #2aa8ff;
+  --shoulder-radius: 12px;
+
+  --small-bg: linear-gradient(180deg, #232731, #0d0f14);
+  --small-fg: #8fd8ff;
+  --small-border: 1px solid #2aa8ff;
+
+  --stick-base-bg: radial-gradient(circle, #0a0c10 0%, #161a22 70%, #232836 100%);
+  --stick-base-border: 2px solid rgb(42 168 255 / 60%);
+  --knob-bg: radial-gradient(circle at 35% 30%, #4a505e 0%, #15181e 60%, #050608 100%);
+  --knob-border: 2px solid #2aa8ff;
+}
