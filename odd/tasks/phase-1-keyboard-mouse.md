@@ -82,7 +82,7 @@ PR slicing decided when a remote exists. Forecast: ~1500–2000 authored lines.
 ## Tasks
 
 - [x] T1 Monorepo scaffold + shared protocol with tests
-- [ ] T2 Server domain (state diffing, stick→keys, mouse motion) with tests
+- [x] T2 Server domain (state diffing, stick→keys, mouse motion) with tests
 - [ ] T3 Server adapters (ws + PIN pairing, robotjs driver, logging driver, CLI)
 - [ ] T4 Mobile scaffold (Vue/Vite/Pinia/Capacitor, landscape) + connection
 - [ ] T5 Gamepad UI: multitouch buttons, virtual sticks, haptics
@@ -108,6 +108,10 @@ Route per task: delegated writer (multi-file, non-trivial).
   passed; shared `typecheck` and `build` clean (TypeScript 7.0.2).
   Workspace packages expose a `source` export condition (src/*.ts) used by
   typecheck/vitest/tsx; `build` resolves the compiled `dist`.
+- T2 `10bd249` feat(server) domain — route: delegated writer. RED: 4 test
+  files failed with "Cannot find module" (domain absent). GREEN: server 22
+  passed, shared 39 passed; root `typecheck` and `build` clean.
+  stickToDirections is angle-based (8 x 45-degree sectors, radial deadzone).
 
 - Engram mirror `odd/phase-1-keyboard-mouse/tasks`: PENDING (host session
   registration failed on first save).
