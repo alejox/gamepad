@@ -81,7 +81,7 @@ PR slicing decided when a remote exists. Forecast: ~1500–2000 authored lines.
 
 ## Tasks
 
-- [ ] T1 Monorepo scaffold + shared protocol with tests
+- [x] T1 Monorepo scaffold + shared protocol with tests
 - [ ] T2 Server domain (state diffing, stick→keys, mouse motion) with tests
 - [ ] T3 Server adapters (ws + PIN pairing, robotjs driver, logging driver, CLI)
 - [ ] T4 Mobile scaffold (Vue/Vite/Pinia/Capacitor, landscape) + connection
@@ -102,6 +102,12 @@ Route per task: delegated writer (multi-file, non-trivial).
 ## Progress / Evidence
 
 (updated per task)
+
+- T1 `a8324f3` feat(shared) — route: delegated writer. RED: 25/25 shared
+  tests failed (exports missing). GREEN: `npm test -w @gamepad/shared` 39
+  passed; shared `typecheck` and `build` clean (TypeScript 7.0.2).
+  Workspace packages expose a `source` export condition (src/*.ts) used by
+  typecheck/vitest/tsx; `build` resolves the compiled `dist`.
 
 - Engram mirror `odd/phase-1-keyboard-mouse/tasks`: PENDING (host session
   registration failed on first save).

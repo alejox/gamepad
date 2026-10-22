@@ -1,0 +1,20 @@
+{
+  "name": "@gamepad/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "gamepad-server": "./dist/main.js"
+  },
+  "scripts": {
+    "dev": "tsx --conditions=source watch src/main.ts",
+    "start": "tsx --conditions=source src/main.ts",
+    "start:dry": "tsx --conditions=source src/main.ts --dry-run",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gamepad/shared": "0.1.0"
+  }
+}
