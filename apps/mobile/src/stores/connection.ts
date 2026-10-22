@@ -72,7 +72,8 @@ export const useConnectionStore = defineStore("connection", () => {
   }
 
   function hello(pin: string): ClientMessage {
-    return { t: "hello", v: PROTOCOL_VERSION, pin, mapping: settingsStore.settings.mapping };
+    const { mapping, mouseSensitivity } = settingsStore.settings;
+    return { t: "hello", v: PROTOCOL_VERSION, pin, mapping, mouseSensitivity };
   }
 
   function open(): void {
@@ -198,11 +199,11 @@ export const useConnectionStore = defineStore("connection", () => {
     if (status.value === "paired") send({ t: "stick", id, x, y });
   }
 
-  // Mapping edits apply immediately to a paired session.
+  // Mapping and sensitivity edits apply immediately to a paired session.
   watch(
-    () => settingsStore.settings.mapping,
-    (mapping) => {
-      if (status.value === "paired") send({ t: "mapping", mapping });
+    () => [settingsStore.settings.mapping, settingsStore.settings.mouseSensitivity] as const,
+    ([mapping, mouseSensitivity]) => {
+      if (status.value === "paired") send({ t: "mapping", mapping, mouseSensitivity });
     },
     { deep: true },
   );

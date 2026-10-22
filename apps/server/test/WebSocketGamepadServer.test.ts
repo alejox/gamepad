@@ -1,7 +1,7 @@
 import { DEFAULT_MAPPING, type ServerMessage } from "@gamepad/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
-import { WebSocketGamepadServer } from "../src/adapters/WebSocketGamepadServer.js";
+import { type GamepadServerOptions, WebSocketGamepadServer } from "../src/adapters/WebSocketGamepadServer.js";
 import { FakeInputDriver } from "./FakeInputDriver.js";
 
 const PIN = "246810";
@@ -17,7 +17,7 @@ interface Client {
 let server: WebSocketGamepadServer | undefined;
 let driver: FakeInputDriver;
 
-async function startServer(overrides: { helloTimeoutMs?: number } = {}): Promise<number> {
+async function startServer(overrides: Partial<GamepadServerOptions> = {}): Promise<number> {
   driver = new FakeInputDriver();
   server = new WebSocketGamepadServer({
     host: "127.0.0.1",
@@ -159,5 +159,53 @@ describe("WebSocketGamepadServer", () => {
     server = undefined;
     expect(driver.calls).toEqual(["keyDown space", "keyUp space"]);
     await client.closed;
+  });
+
+  describe("per-session mouse sensitivity", () => {
+    // Each call advances the clock 10 ms, so every tick covers exactly 10 ms.
+    const steppedClock = (): (() => number) => {
+      let t = 0;
+      return () => (t += 10);
+    };
+
+    async function pairWith(extra: Record<string, unknown>): Promise<Client> {
+      const client = await connect(await startServer({ now: steppedClock() }));
+      client.send({ t: "hello", v: 1, pin: PIN, ...extra });
+      await vi.waitFor(() => expect(client.messages).toContainEqual({ t: "welcome" }));
+      return client;
+    }
+
+    it("falls back to the server default without mouseSensitivity", async () => {
+      const client = await pairWith({});
+      client.send({ t: "stick", id: "R", x: 1, y: 0 });
+      // 2000 px/s * 10 ms = 20 px per tick.
+      await vi.waitFor(() => expect(driver.moves[0]).toEqual([20, 0]));
+      client.ws.close();
+    });
+
+    it("uses the sensitivity sent in hello", async () => {
+      const client = await pairWith({ mouseSensitivity: 500 });
+      client.send({ t: "stick", id: "R", x: 1, y: 0 });
+      await vi.waitFor(() => expect(driver.moves[0]).toEqual([5, 0]));
+      client.ws.close();
+    });
+
+    it("applies a sensitivity change from a mapping message immediately", async () => {
+      const client = await pairWith({ mouseSensitivity: 500 });
+      client.send({ t: "stick", id: "R", x: 1, y: 0 });
+      await vi.waitFor(() => expect(driver.moves.length).toBeGreaterThan(0));
+      client.send({ t: "mapping", mapping: DEFAULT_MAPPING, mouseSensitivity: 1000 });
+      await vi.waitFor(() => expect(driver.moves.at(-1)).toEqual([10, 0]));
+      client.ws.close();
+    });
+
+    it("keeps the current sensitivity when a mapping omits it", async () => {
+      const client = await pairWith({ mouseSensitivity: 500 });
+      client.send({ t: "mapping", mapping: DEFAULT_MAPPING });
+      client.send({ t: "stick", id: "R", x: 1, y: 0 });
+      await vi.waitFor(() => expect(driver.moves.length).toBeGreaterThan(2));
+      expect(new Set(driver.moves.map(([dx]) => dx))).toEqual(new Set([5]));
+      client.ws.close();
+    });
   });
 });

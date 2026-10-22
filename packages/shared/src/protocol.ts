@@ -6,11 +6,16 @@ export const PROTOCOL_VERSION = 1;
 
 const PIN_PATTERN = /^\d{6}$/;
 
+/** Allowed cursor speed (pixels per second at full right-stick deflection). */
+export const MOUSE_SENSITIVITY_RANGE = { min: 100, max: 5000 } as const;
+
 export interface HelloMessage {
   t: "hello";
   v: number;
   pin: string;
   mapping?: KeyMapping;
+  /** Optional per-session cursor speed; the server default applies when absent. */
+  mouseSensitivity?: number;
 }
 
 export interface ButtonMessage {
@@ -31,6 +36,8 @@ export interface StickMessage {
 export interface MappingMessage {
   t: "mapping";
   mapping: KeyMapping;
+  /** Optional; when absent the session keeps its current sensitivity. */
+  mouseSensitivity?: number;
 }
 
 export interface PingMessage {
@@ -65,6 +72,15 @@ function parseJsonRecord(raw: string): UnknownRecord | null {
   }
 }
 
+/** undefined = field absent, null = present but invalid. */
+function parseSensitivity(msg: UnknownRecord): number | undefined | null {
+  if (msg.mouseSensitivity === undefined) return undefined;
+  const value = msg.mouseSensitivity;
+  return isFiniteNumber(value) && value >= MOUSE_SENSITIVITY_RANGE.min && value <= MOUSE_SENSITIVITY_RANGE.max
+    ? value
+    : null;
+}
+
 function parseHello(msg: UnknownRecord): HelloMessage | null {
   if (!Number.isInteger(msg.v) || typeof msg.pin !== "string" || !PIN_PATTERN.test(msg.pin)) {
     return null;
@@ -75,6 +91,9 @@ function parseHello(msg: UnknownRecord): HelloMessage | null {
     if (!mapping) return null;
     hello.mapping = mapping;
   }
+  const sensitivity = parseSensitivity(msg);
+  if (sensitivity === null) return null;
+  if (sensitivity !== undefined) hello.mouseSensitivity = sensitivity;
   return hello;
 }
 
@@ -96,7 +115,9 @@ export function parseClientMessage(raw: string): ClientMessage | null {
         : null;
     case "mapping": {
       const mapping = parseMapping(msg.mapping);
-      return mapping ? { t: "mapping", mapping } : null;
+      const sensitivity = parseSensitivity(msg);
+      if (!mapping || sensitivity === null) return null;
+      return sensitivity === undefined ? { t: "mapping", mapping } : { t: "mapping", mapping, mouseSensitivity: sensitivity };
     }
     case "ping":
       return isFiniteNumber(msg.ts) ? { t: "ping", ts: msg.ts } : null;

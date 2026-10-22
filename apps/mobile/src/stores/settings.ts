@@ -43,5 +43,9 @@ export const useSettingsStore = defineStore("settings", () => {
     void persistence().set(SERVER_KEY, JSON.stringify({ host, port }));
   }
 
-  return { settings, lastHost, lastPort, load, rememberServer };
+  function resetDefaults(): void {
+    settings.value = defaultSettings();
+  }
+
+  return { settings, lastHost, lastPort, load, rememberServer, resetDefaults };
 });

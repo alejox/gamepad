@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SocketHandlers } from "../src/adapters/socket.js";
 import { reconnectDelay } from "../src/domain/reconnect.js";
 import { configureConnection, useConnectionStore } from "../src/stores/connection.js";
+import { useSettingsStore } from "../src/stores/settings.js";
+import { nextTick } from "vue";
 import { memoryPersistence, setPersistence } from "../src/adapters/persistence.js";
 
 class FakeSocket {
@@ -83,7 +85,13 @@ describe("connection store", () => {
     expect(lastSocket().url).toBe("ws://192.168.1.20:7531");
 
     lastSocket().open();
-    expect(lastSocket().sent[0]).toMatchObject({ t: "hello", v: 1, pin: "123456", mapping: DEFAULT_MAPPING });
+    expect(lastSocket().sent[0]).toMatchObject({
+      t: "hello",
+      v: 1,
+      pin: "123456",
+      mapping: DEFAULT_MAPPING,
+      mouseSensitivity: 1200,
+    });
 
     lastSocket().receive({ t: "welcome" });
     expect(store.status).toBe("paired");
@@ -135,6 +143,19 @@ describe("connection store", () => {
     lastSocket().receive({ t: "welcome" });
     expect(store.status).toBe("paired");
     expect(store.reconnecting).toBe(false);
+  });
+
+  it("sends mapping and sensitivity changes immediately while paired", async () => {
+    pairedStore();
+    const settings = useSettingsStore();
+    settings.settings.mouseSensitivity = 2000;
+    await nextTick();
+    expect(lastSocket().sent.at(-1)).toMatchObject({ t: "mapping", mapping: DEFAULT_MAPPING, mouseSensitivity: 2000 });
+
+    settings.settings.mapping.buttons.a = "j";
+    await nextTick();
+    expect(lastSocket().sent.at(-1)).toMatchObject({ t: "mapping", mouseSensitivity: 2000 });
+    expect((lastSocket().sent.at(-1)?.mapping as { buttons: Record<string, string> }).buttons.a).toBe("j");
   });
 
   it("only sends input while paired", () => {

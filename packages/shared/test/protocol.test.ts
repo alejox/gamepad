@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BUTTON_IDS,
   DEFAULT_MAPPING,
+  MOUSE_SENSITIVITY_RANGE,
   PROTOCOL_VERSION,
   parseClientMessage,
   parseServerMessage,
@@ -100,5 +101,32 @@ describe("parseServerMessage", () => {
   it("rejects unknown error codes and types", () => {
     expect(parseServerMessage(json({ t: "error", code: "nope" }))).toBeNull();
     expect(parseServerMessage(json({ t: "hello" }))).toBeNull();
+  });
+});
+
+describe("mouseSensitivity (optional)", () => {
+  it("is accepted on hello and mapping within range", () => {
+    expect(parseClientMessage(json({ t: "hello", v: 1, pin: "123456", mouseSensitivity: 1500 }))).toEqual({
+      t: "hello",
+      v: 1,
+      pin: "123456",
+      mouseSensitivity: 1500,
+    });
+    expect(parseClientMessage(json({ t: "mapping", mapping: DEFAULT_MAPPING, mouseSensitivity: 100 }))).toEqual({
+      t: "mapping",
+      mapping: DEFAULT_MAPPING,
+      mouseSensitivity: 100,
+    });
+    expect(MOUSE_SENSITIVITY_RANGE).toEqual({ min: 100, max: 5000 });
+  });
+
+  it.each([
+    ["too low", 99],
+    ["too high", 5001],
+    ["a string", "1200"],
+    ["NaN-like null", null],
+  ])("rejects a value that is %s", (_name, value) => {
+    expect(parseClientMessage(json({ t: "hello", v: 1, pin: "123456", mouseSensitivity: value }))).toBeNull();
+    expect(parseClientMessage(json({ t: "mapping", mapping: DEFAULT_MAPPING, mouseSensitivity: value }))).toBeNull();
   });
 });

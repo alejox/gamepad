@@ -1,9 +1,11 @@
 /*
  * Skins are sets of CSS custom properties selected by [data-skin] on <html>.
  * Components only read variables; they never know which skin is active.
+ * The base block is the "neon" skin and is re-declared on every [data-skin]
+ * element, so previews nested in another skin get a complete variable set.
  */
 :root,
-[data-skin="neon"] {
+[data-skin] {
   --pad-bg: radial-gradient(circle at 50% 40%, #1a1f2b 0%, #0c0e13 70%),
     repeating-linear-gradient(45deg, #0f1218 0 4px, #0b0d12 4px 8px);
   --pad-fg: #8fd8ff;
@@ -42,4 +44,143 @@
   --stick-base-border: 2px solid rgb(42 168 255 / 60%);
   --knob-bg: radial-gradient(circle at 35% 30%, #4a505e 0%, #15181e 60%, #050608 100%);
   --knob-border: 2px solid #2aa8ff;
+}
+
+[data-skin="retro8"] {
+  --pad-bg: linear-gradient(180deg, #dedbd3 0%, #cdc9c0 100%);
+  --pad-fg: #2b2b2b;
+  --accent: #c8202a;
+  --font-label: ui-monospace, "Courier New", Menlo, monospace;
+
+  --btn-bg: #c8202a;
+  --btn-border: 3px solid #8e141b;
+  --btn-shadow: 0 3px 0 #6d0f15;
+  --btn-fg: #f4efe4;
+  --face-x-bg: #2b2b2b;
+  --face-y-bg: #2b2b2b;
+
+  --dpad-bg: #1b1b1b;
+  --dpad-fg: #6b6b6b;
+  --dpad-border: 2px solid #000;
+  --dpad-radius: 2px;
+
+  --shoulder-bg: #55555a;
+  --shoulder-fg: #f4efe4;
+  --shoulder-border: 2px solid #2b2b2b;
+  --shoulder-radius: 3px;
+
+  --small-bg: #55555a;
+  --small-fg: #f4efe4;
+  --small-border: 2px solid #2b2b2b;
+
+  --stick-base-bg: radial-gradient(circle, #b9b5ac 0%, #a8a49b 100%);
+  --stick-base-border: 3px solid #2b2b2b;
+  --knob-bg: #1b1b1b;
+  --knob-border: 2px solid #000;
+}
+
+[data-skin="retro16"] {
+  --pad-bg: radial-gradient(ellipse at 50% 30%, #b9b9c2 0%, #9d9da8 75%);
+  --pad-fg: #34343c;
+  --accent: #4a4ad0;
+
+  --btn-bg: #d8d8de;
+  --btn-border: 2px solid #6e6e78;
+  --btn-shadow: 0 3px 4px rgb(0 0 0 / 30%), inset 0 2px 2px rgb(255 255 255 / 35%);
+  --btn-fg: #1c1c22;
+  --face-y-bg: radial-gradient(circle at 35% 30%, #5a6bff, #2a33a8);
+  --face-x-bg: radial-gradient(circle at 35% 30%, #4fd06a, #1d7d33);
+  --face-b-bg: radial-gradient(circle at 35% 30%, #ff5d5d, #b01e1e);
+  --face-a-bg: radial-gradient(circle at 35% 30%, #ffe15a, #c79a00);
+  --face-y-fg: #eef0ff;
+  --face-x-fg: #effff2;
+  --face-b-fg: #fff0f0;
+  --face-a-fg: #3a2d00;
+
+  --dpad-bg: linear-gradient(160deg, #4a4a55, #2c2c34);
+  --dpad-fg: #a7a7b3;
+  --dpad-border: 2px solid #26262d;
+  --dpad-radius: 12px;
+
+  --shoulder-bg: linear-gradient(180deg, #d8d8de, #a9a9b2);
+  --shoulder-fg: #34343c;
+  --shoulder-border: 2px solid #7a7a84;
+  --shoulder-radius: 22px;
+
+  --small-bg: #6e6e78;
+  --small-fg: #eeeef2;
+  --small-border: 1px solid #55555e;
+
+  --stick-base-bg: radial-gradient(circle, #8b8b96 0%, #a5a5b0 100%);
+  --stick-base-border: 2px solid #6e6e78;
+  --knob-bg: radial-gradient(circle at 35% 30%, #5b5b66, #2c2c34);
+  --knob-border: 2px solid #26262d;
+}
+
+[data-skin="green"] {
+  --pad-bg: radial-gradient(ellipse at 50% 35%, #1c4a2c 0%, #0e2617 80%);
+  --pad-fg: #cfe9d6;
+  --accent: #46c35a;
+
+  --btn-bg: radial-gradient(circle at 35% 30%, rgb(60 60 60 / 70%), rgb(0 0 0 / 70%));
+  --btn-border: 2px solid rgb(0 0 0 / 55%);
+  --btn-shadow: 0 2px 5px rgb(0 0 0 / 45%), inset 0 1px 2px rgb(255 255 255 / 20%);
+  --btn-fg: #e6e6e6;
+  --face-y-fg: #f5c518;
+  --face-x-fg: #2f8cff;
+  --face-b-fg: #e8383d;
+  --face-a-fg: #46c35a;
+
+  --dpad-bg: linear-gradient(160deg, #1d2620, #0a0f0c);
+  --dpad-fg: #7c9a84;
+  --dpad-border: 2px solid rgb(0 0 0 / 60%);
+  --dpad-radius: 6px;
+
+  --shoulder-bg: linear-gradient(180deg, #23302a, #0b120e);
+  --shoulder-fg: #cfe9d6;
+  --shoulder-border: 2px solid rgb(0 0 0 / 55%);
+  --shoulder-radius: 16px;
+
+  --small-bg: rgb(0 0 0 / 55%);
+  --small-fg: #cfe9d6;
+  --small-border: 1px solid rgb(0 0 0 / 60%);
+
+  --stick-base-bg: radial-gradient(circle, rgb(0 0 0 / 55%), rgb(0 0 0 / 30%));
+  --stick-base-border: 2px solid rgb(0 0 0 / 50%);
+  --knob-bg: radial-gradient(circle at 35% 30%, #3c3c3c, #0a0a0a);
+  --knob-border: 2px solid rgb(0 0 0 / 70%);
+}
+
+[data-skin="geo"] {
+  --pad-bg: linear-gradient(180deg, #17171a, #0d0d0f);
+  --pad-fg: #b8b8c2;
+  --accent: #7aa7ff;
+
+  --btn-bg: radial-gradient(circle at 40% 35%, #2a2a2e, #141416);
+  --btn-border: 1px solid #2f2f35;
+  --btn-shadow: 0 2px 4px rgb(0 0 0 / 60%);
+  --btn-fg: #b8b8c2;
+  --face-y-fg: #3ec9a7;
+  --face-b-fg: #ff5b6e;
+  --face-a-fg: #7aa7ff;
+  --face-x-fg: #f09bd8;
+
+  --dpad-bg: linear-gradient(160deg, #26262a, #141416);
+  --dpad-fg: #8a8a94;
+  --dpad-border: 1px solid #2f2f35;
+  --dpad-radius: 10px;
+
+  --shoulder-bg: linear-gradient(180deg, #26262a, #121214);
+  --shoulder-fg: #b8b8c2;
+  --shoulder-border: 1px solid #2f2f35;
+  --shoulder-radius: 10px;
+
+  --small-bg: #1c1c20;
+  --small-fg: #b8b8c2;
+  --small-border: 1px solid #2f2f35;
+
+  --stick-base-bg: radial-gradient(circle, #0b0b0d 0%, #1a1a1e 80%);
+  --stick-base-border: 1px solid #2f2f35;
+  --knob-bg: radial-gradient(circle at 40% 35%, #333338, #121214);
+  --knob-border: 1px solid #3a3a40;
 }

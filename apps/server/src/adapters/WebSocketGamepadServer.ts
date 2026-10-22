@@ -41,6 +41,8 @@ interface Session {
   motion: MouseMotion;
   ticker: NodeJS.Timeout | undefined;
   lastTick: number;
+  /** Last right-stick vector, re-applied when sensitivity changes. */
+  right: { x: number; y: number };
 }
 
 /**
@@ -130,9 +132,13 @@ export class WebSocketGamepadServer {
     const session: Session = {
       socket,
       state: new ControllerState(message.mapping ?? DEFAULT_MAPPING, { deadzone: this.options.deadzone }),
-      motion: new MouseMotion(this.options.mouse),
+      motion: new MouseMotion({
+        ...this.options.mouse,
+        sensitivity: message.mouseSensitivity ?? this.options.mouse.sensitivity,
+      }),
       ticker: undefined,
       lastTick: 0,
+      right: { x: 0, y: 0 },
     };
     this.active = session;
     send(socket, { t: "welcome" });
@@ -150,6 +156,10 @@ export class WebSocketGamepadServer {
         return;
       case "mapping":
         this.apply(session.state.setMapping(message.mapping));
+        if (message.mouseSensitivity !== undefined) {
+          session.motion.setSensitivity(message.mouseSensitivity);
+          this.setRightStick(session, session.right.x, session.right.y);
+        }
         return;
       case "ping":
         send(session.socket, { t: "pong", ts: message.ts });
@@ -162,6 +172,7 @@ export class WebSocketGamepadServer {
   }
 
   private setRightStick(session: Session, x: number, y: number): void {
+    session.right = { x, y };
     session.motion.setVector(x, y);
     if (session.motion.active && !session.ticker) {
       session.lastTick = this.now();
