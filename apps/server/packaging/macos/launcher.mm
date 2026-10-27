@@ -74,6 +74,8 @@ void showErrorDialog(const std::string& log) {
 @property(nonatomic, copy) NSString* iconPath;
 @property(nonatomic, strong) NSArray<NSString*>* forwardedArgs;
 @property(nonatomic) BOOL quitting;
+@property(nonatomic) BOOL lastPending;
+@property(nonatomic, strong) NSTimer* pollTimer;
 @end
 
 @implementation AppDelegate
@@ -84,10 +86,13 @@ void showErrorDialog(const std::string& log) {
     showErrorDialog([self.logPath UTF8String]);
     [NSApp terminate:nil];
   }
+  self.pollTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(pollStatus) userInfo:nil repeats:YES];
 }
 
 - (void)applicationWillTerminate:(NSNotification*)notification {
   self.quitting = YES;
+  [self.pollTimer invalidate];
+  self.pollTimer = nil;
   if (self.serverTask && self.serverTask.isRunning) {
     [self.serverTask terminate];
     [self.serverTask waitUntilExit];
@@ -192,6 +197,21 @@ void showErrorDialog(const std::string& log) {
   return [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
 }
 
+- (BOOL)hasPendingRequest:(NSDictionary*)status {
+  id pending = status[@"pending"];
+  return pending != nil && pending != [NSNull null];
+}
+
+- (void)pollStatus {
+  NSDictionary* status = [self fetchStatus];
+  BOOL pending = status != nil && [self hasPendingRequest:status];
+  if (pending && !self.lastPending) {
+    // A pairing request arrived: surface the menu so the user can Allow/Deny.
+    [self.statusItem.button performClick:nil];
+  }
+  self.lastPending = pending;
+}
+
 - (void)menuNeedsUpdate:(NSMenu*)menu {
   [menu removeAllItems];
 
@@ -216,6 +236,18 @@ void showErrorDialog(const std::string& log) {
   NSMenuItem* headingItem = [self disabledItem:heading];
   headingItem.image = [NSImage imageNamed:connected ? NSImageNameStatusAvailable : NSImageNameStatusNone];
   [menu addItem:headingItem];
+
+  if ([self hasPendingRequest:status]) {
+    NSDictionary* pending = status[@"pending"];
+    NSString* device = pending[@"device"] ?: @"a controller";
+    NSString* address = pending[@"remoteAddress"] ?: @"";
+    [menu addItem:[NSMenuItem separatorItem]];
+    NSString* request = [address length] > 0 ? [NSString stringWithFormat:@"Request from %@ (%@)", device, address]
+                                            : [NSString stringWithFormat:@"Request from %@", device];
+    [menu addItem:[self disabledItem:request]];
+    [menu addItem:[self actionItem:@"Allow" action:@selector(approve:)]];
+    [menu addItem:[self actionItem:@"Deny" action:@selector(deny:)]];
+  }
 
   [menu addItem:[NSMenuItem separatorItem]];
 
@@ -248,6 +280,40 @@ void showErrorDialog(const std::string& log) {
   NSMenuItem* item = [[NSMenuItem alloc] initWithTitle:title action:nil keyEquivalent:@""];
   item.enabled = NO;
   return item;
+}
+
+- (NSMenuItem*)actionItem:(NSString*)title action:(SEL)selector {
+  NSMenuItem* item = [[NSMenuItem alloc] initWithTitle:title action:selector keyEquivalent:@""];
+  item.target = self;
+  return item;
+}
+
+- (void)approve:(id)sender {
+  [self postAction:@"/approve"];
+}
+
+- (void)deny:(id)sender {
+  [self postAction:@"/deny"];
+}
+
+- (void)postAction:(NSString*)path {
+  int port = readyPort.load();
+  if (port <= 0) return;
+  NSString* url = [NSString stringWithFormat:@"http://127.0.0.1:%d%@", port, path];
+  NSMutableURLRequest* request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url]];
+  request.HTTPMethod = @"POST";
+  [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+  [request setValue:[NSString stringWithFormat:@"http://127.0.0.1:%d", port] forHTTPHeaderField:@"Origin"];
+  request.HTTPBody = [@"{}" dataUsingEncoding:NSUTF8StringEncoding];
+  NSURLSessionDataTask* task = [[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData* data, NSURLResponse* response, NSError* error) {
+    (void)data;
+    (void)response;
+    (void)error;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      self.lastPending = NO;
+    });
+  }];
+  [task resume];
 }
 
 - (NSMenuItem*)copyItem:(NSString*)value withTitle:(NSString*)title {

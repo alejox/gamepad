@@ -50,9 +50,11 @@ You need an **Apple Silicon Mac (arm64)**. Intel Macs are not supported. You do
    and reopen it. This permission is required for keyboard/mouse emulation.
 4. Launch **AlejoxGamepad** from Applications. A gamepad icon appears in the
    menu bar (top-right). Click it to see the PC addresses, PIN and
-   Keyboard / mouse driver; click an address or the PIN to copy it. If port
-   `7531` is already in use, the host picks a free port and shows it in the
-   menu. Use **Quit AlejoxGamepad** to stop the host and the app.
+   Keyboard / mouse driver; click an address or the PIN to copy it. A phone
+   connecting with **Find PC** shows an **Allow** / **Deny** request in the menu
+   (it opens automatically), so no browser is needed. If port `7531` is already
+   in use, the host picks a free port and shows it in the menu. Use **Quit
+   AlejoxGamepad** to stop the host and the app.
 5. On the phone, install/open the app while connected to the same Wi-Fi. Enter
    the PC address, the port shown in the menu and the PIN, then tap **Connect**
    and play.

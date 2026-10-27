@@ -16,6 +16,9 @@ plus **Quit**. No browser opens automatically; the host stays a background
   (possibly fallback) port.
 - The menu queries `GET /status` on loopback when it opens, copies address/PIN
   on click, and offers **Open host page** (browser fallback) and **Quit**.
+- A pending pairing request appears in the menu with **Allow** / **Deny** (the
+  same approval the host page offers), and the menu pops open automatically when
+  a request arrives, so no browser is needed.
 - Keep the error dialog on abnormal exit and the `~/Library/Logs/AlejoxGamepad`
   log capture.
 
@@ -34,12 +37,14 @@ plus **Quit**. No browser opens automatically; the host stays a background
 
 - [x] W1 Server prints `GAMEPAD_READY` and no longer opens the browser on macOS.
 - [x] W2 Rewrite the launcher as an AppKit status-item app.
-- [x] W3 Smoke/docs/version bump and release.
+- [x] W3 Approval (Allow/Deny) in the menu, smoke/docs/version bump and release.
 
 ## Acceptance criteria
 
 - Launching the app shows a gamepad icon in the menu bar; the menu lists the
   LAN addresses, PIN and driver, and Quit stops the host and the app.
+- A pending pairing request shows Allow/Deny in the menu (the menu pops open on
+  arrival) and approves/denies without opening a browser.
 - No browser opens automatically; **Open host page** opens it on demand.
 - The packaged app still serves `/status` and shuts down cleanly on SIGTERM.
 
@@ -58,7 +63,12 @@ Branched `feat/macos-status-item` from `main` cdffc20 (v0.2.2). Work units:
   page** and **Quit**. The bundled server runs under `NSTask`; its output is
   piped to the log and scanned for `GAMEPAD_READY`. `package-macos.sh` compiles
   with `-fobjc-arc -framework Cocoa`.
-- W3 version bump to 0.3.0 and README menu bar instructions.
+- W3 version bump to 0.3.0 and README menu bar instructions. Also added the
+  approval flow: `menuNeedsUpdate:` shows Allow/Deny when `/status` reports a
+  `pending` request, `approve:`/`deny:` POST to `/approve`/`/deny` with the
+  loopback CSRF headers, and a 1 s poll pops the menu when a request arrives.
+  The POST headers were verified against the server (`409` no-pending, not the
+  `403` CSRF rejection).
 
 Local verification on arm64:
 
