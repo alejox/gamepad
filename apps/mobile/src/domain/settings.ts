@@ -7,9 +7,17 @@ export const SKINS = [
   { id: "retro16", name: "Retro 16-bit", description: "Rounded grey body, four colored face buttons" },
   { id: "green", name: "Green", description: "Dark green body, translucent buttons, colored letters" },
   { id: "geo", name: "Geometric", description: "Matte black with geometric face glyphs" },
+  { id: "shapes", name: "Shapes", description: "White two-tone body, touch panel, colored shape buttons" },
 ] as const;
 
 export type SkinId = (typeof SKINS)[number]["id"];
+
+/** Skins whose face buttons show shape glyphs instead of letters. */
+const GLYPH_SKINS: ReadonlySet<SkinId> = new Set<SkinId>(["geo", "shapes"]);
+
+export function usesFaceGlyphs(skin: SkinId): boolean {
+  return GLYPH_SKINS.has(skin);
+}
 
 export interface Settings {
   skin: SkinId;

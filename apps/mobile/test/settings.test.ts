@@ -1,6 +1,12 @@
 import { DEFAULT_MAPPING } from "@gamepad/shared";
 import { describe, expect, it } from "vitest";
-import { SKINS, defaultSettings, parseStoredServer, parseStoredSettings } from "../src/domain/settings.js";
+import {
+  SKINS,
+  defaultSettings,
+  parseStoredServer,
+  parseStoredSettings,
+  usesFaceGlyphs,
+} from "../src/domain/settings.js";
 
 describe("parseStoredSettings", () => {
   it("returns defaults for missing or corrupt data", () => {
@@ -32,8 +38,16 @@ describe("parseStoredSettings", () => {
     expect(restored).toEqual(defaultSettings());
   });
 
-  it("offers six skins with pro first", () => {
-    expect(SKINS.map((skin) => skin.id)).toEqual(["pro", "neon", "retro8", "retro16", "green", "geo"]);
+  it("offers seven skins with pro first", () => {
+    expect(SKINS.map((skin) => skin.id)).toEqual(["pro", "neon", "retro8", "retro16", "green", "geo", "shapes"]);
+  });
+
+  it("restores the shapes skin", () => {
+    expect(parseStoredSettings(JSON.stringify({ skin: "shapes" })).skin).toBe("shapes");
+  });
+
+  it("draws face glyphs only for the glyph skins", () => {
+    expect(SKINS.filter((skin) => usesFaceGlyphs(skin.id)).map((skin) => skin.id)).toEqual(["geo", "shapes"]);
   });
 });
 

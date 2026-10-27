@@ -398,3 +398,209 @@
   stroke-linecap: round;
   filter: drop-shadow(0 0 3px rgb(61 139 255 / 80%));
 }
+
+/*
+ * "Shapes": two-tone console pad with outlined shape face glyphs. Original
+ * artwork: a matte white body with soft grip shading, a black centre plate
+ * holding a light touch panel, and a light-bar glow on the find-PC button.
+ * Scoped rules only target the live pad; Settings previews use the variables.
+ */
+[data-skin="shapes"] {
+  --shapes-glow: #4a8dff;
+  --shapes-ink: #1c1e23;
+  --pad-bg: radial-gradient(ellipse 34% 58% at 10% 100%, rgb(150 156 168 / 38%), transparent 72%),
+    radial-gradient(ellipse 34% 58% at 90% 100%, rgb(150 156 168 / 38%), transparent 72%),
+    linear-gradient(180deg, #fbfbfd 0%, #eceef2 60%, #dfe2e8 100%);
+  --pad-fg: #4a4e58;
+  --accent: #4a8dff;
+  --font-label: "Helvetica Neue", "Segoe UI", Roboto, system-ui, sans-serif;
+
+  --btn-bg: radial-gradient(circle at 40% 32%, #3a3d45 0%, #1c1e23 55%, #0d0e11 100%);
+  --btn-border: 1px solid #0a0b0d;
+  --btn-shadow: 0 3px 6px rgb(40 46 60 / 35%), inset 0 1px 1px rgb(255 255 255 / 18%);
+  --btn-fg: #e6e8ee;
+  --face-y-fg: #2ec4a6;
+  --face-b-fg: #ff4d5e;
+  --face-a-fg: #5a8dee;
+  --face-x-fg: #e57cd8;
+
+  --dpad-bg: linear-gradient(160deg, #3a3d45, #17191d);
+  --dpad-fg: #9ba1ad;
+  --dpad-border: 0;
+  --dpad-radius: 6px;
+
+  --shoulder-bg: linear-gradient(180deg, #ffffff 0%, #d9dce2 100%);
+  --shoulder-fg: #3a3e48;
+  --shoulder-border: 1px solid #c3c7cf;
+  --shoulder-radius: 999px;
+
+  --small-bg: linear-gradient(180deg, #4a4e57, #2a2c32);
+  --small-fg: #eef0f4;
+  --small-border: 1px solid #16171b;
+
+  --stick-base-bg: radial-gradient(circle at 50% 45%, #0e0f12 0%, #1d1f24 60%, #9aa0ab 86%, #e4e6eb 100%);
+  --stick-base-border: 1px solid #b9bdc6;
+  --knob-bg: repeating-radial-gradient(circle at 50% 50%, #2a2d33 0 0.55vmin, #1a1c20 0.55vmin 1.1vmin);
+  --knob-border: 2px solid #3d4048;
+}
+
+/* Centre: black plate with a light touch panel across its top. */
+[data-skin="shapes"] .center {
+  position: relative;
+  isolation: isolate;
+  min-width: 34vmin;
+  padding: 2vmin 2.4vmin 2.4vmin;
+  border-radius: 5vmin 5vmin 7vmin 7vmin;
+  background: linear-gradient(180deg, #23252b 0%, #121316 100%);
+  box-shadow: 0 2px 6px rgb(40 46 60 / 30%), inset 0 1px 0 rgb(255 255 255 / 8%);
+}
+[data-skin="shapes"] .center::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 1.4vmin;
+  left: 1.6vmin;
+  right: 1.6vmin;
+  height: 14vmin;
+  border-radius: 3vmin 3vmin 4.5vmin 4.5vmin;
+  background: linear-gradient(180deg, #f6f7f9 0%, #dcdfe5 100%);
+  box-shadow: inset 0 -1px 2px rgb(0 0 0 / 18%), inset 0 1px 0 #fff;
+  pointer-events: none;
+}
+[data-skin="shapes"] .status {
+  padding-top: 1.4vmin;
+  color: #3a3e48;
+}
+[data-skin="shapes"] .tool:focus-visible {
+  outline: 2px solid var(--shapes-glow);
+  outline-offset: 2px;
+}
+
+/* Find-PC button: small dark cap with a soft light-bar glow beneath. */
+[data-skin="shapes"] .emblem {
+  display: grid;
+  place-items: center;
+  width: 10vmin;
+  height: 10vmin;
+  margin-top: 3vmin;
+  border-radius: 50%;
+  color: #c7d8ff;
+  background: radial-gradient(circle at 45% 35%, #3a3d45 0%, #16171b 70%);
+  border: 1px solid #0a0b0d;
+  box-shadow: 0 0 0 1px rgb(74 141 255 / 55%), 0 1.2vmin 2.4vmin -0.6vmin rgb(74 141 255 / 75%);
+  transition: transform 60ms ease-out, box-shadow 120ms ease-out;
+}
+[data-skin="shapes"] .emblem.live {
+  box-shadow: 0 0 0 1px var(--shapes-glow), 0 0 12px rgb(74 141 255 / 80%);
+}
+[data-skin="shapes"] .emblem:active:not([aria-disabled="true"]) {
+  transform: scale(0.92);
+  box-shadow: 0 0 0 1px var(--shapes-glow), 0 0 18px rgb(74 141 255 / 95%);
+}
+[data-skin="shapes"] .emblem:focus-visible {
+  outline: 2px solid var(--shapes-glow);
+  outline-offset: 3px;
+}
+[data-skin="shapes"] .emblem[aria-disabled="true"] {
+  cursor: default;
+}
+[data-skin="shapes"] .emblem svg {
+  width: 60%;
+  height: 60%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Shoulders: rounded pill tabs. */
+[data-skin="shapes"] .shoulder {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow: 0 2px 4px rgb(40 46 60 / 25%), inset 0 1px 0 #fff;
+}
+[data-skin="shapes"] .shoulder.pressed {
+  filter: none;
+  background: linear-gradient(180deg, #d9dce2 0%, #c4c8d0 100%);
+  box-shadow: inset 0 2px 5px rgb(40 46 60 / 35%), 0 0 0 1px rgb(74 141 255 / 60%);
+}
+
+/* SELECT / START: slim buttons with their labels kept. */
+[data-skin="shapes"] .menu .small {
+  min-width: 12vmin;
+  height: 5vmin;
+  font-size: 2.2vmin;
+}
+[data-skin="shapes"] .small.pressed {
+  filter: none;
+  box-shadow: inset 0 0 0 1px var(--shapes-glow), inset 0 0 8px rgb(74 141 255 / 70%);
+}
+
+/* D-pad: four separate arrow-shaped keys pointing at the centre. */
+[data-skin="shapes"] .dpad-hub {
+  display: none;
+}
+[data-skin="shapes"] .dpad-arm {
+  font-size: 2.4vmin;
+  transform: scale(0.88);
+}
+[data-skin="shapes"] .dpad_up {
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
+}
+[data-skin="shapes"] .dpad_down {
+  clip-path: polygon(50% 0, 100% 38%, 100% 100%, 0 100%, 0 38%);
+}
+[data-skin="shapes"] .dpad_left {
+  clip-path: polygon(0 0, 62% 0, 100% 50%, 62% 100%, 0 100%);
+}
+[data-skin="shapes"] .dpad_right {
+  clip-path: polygon(38% 0, 100% 0, 100% 100%, 38% 100%, 0 50%);
+}
+[data-skin="shapes"] .dpad_up span {
+  margin-bottom: 30%;
+}
+[data-skin="shapes"] .dpad_down span {
+  margin-top: 30%;
+}
+[data-skin="shapes"] .dpad_left span {
+  margin-right: 30%;
+}
+[data-skin="shapes"] .dpad_right span {
+  margin-left: 30%;
+}
+[data-skin="shapes"] .dpad-arm.pressed {
+  transform: scale(0.84);
+  filter: none;
+  color: #c7d8ff;
+  background: linear-gradient(160deg, #2a3550, #121a2c);
+}
+
+/* Face buttons: dark caps with outlined colored shapes that glow on press. */
+[data-skin="shapes"] .face .glyph {
+  width: 58%;
+  height: 58%;
+  stroke-width: 2;
+}
+[data-skin="shapes"] .face.pressed {
+  filter: none;
+  box-shadow: inset 0 0 10px currentColor, 0 0 12px currentColor;
+}
+[data-skin="shapes"] .face.pressed .glyph {
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+/* Sticks: recessed wells with concave ringed caps. */
+[data-skin="shapes"] .stick {
+  box-shadow: inset 0 5px 12px rgb(0 0 0 / 70%), 0 1px 0 #fff;
+}
+[data-skin="shapes"] .stick-knob {
+  width: 46%;
+  height: 46%;
+  box-shadow: 0 4px 8px rgb(0 0 0 / 55%), inset 0 3px 6px rgb(0 0 0 / 65%), inset 0 -1px 1px rgb(255 255 255 / 20%);
+}
+[data-skin="shapes"] .stick.active .stick-knob {
+  filter: none;
+  box-shadow: 0 4px 8px rgb(0 0 0 / 55%), inset 0 3px 6px rgb(0 0 0 / 65%), 0 0 0 1px var(--shapes-glow),
+    0 0 10px rgb(74 141 255 / 60%);
+}

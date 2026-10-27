@@ -7,6 +7,7 @@ import FaceLabel from "../components/FaceLabel.vue";
 import PadEmblem from "../components/PadEmblem.vue";
 import PadButton from "../components/PadButton.vue";
 import VirtualStick from "../components/VirtualStick.vue";
+import { usesFaceGlyphs } from "../domain/settings.js";
 import type { Vector } from "../domain/stick.js";
 import { useConnectionStore } from "../stores/connection.js";
 import { useSettingsStore } from "../stores/settings.js";
@@ -16,6 +17,9 @@ const emit = defineEmits<{ settings: [] }>();
 
 const connection = useConnectionStore();
 const settingsStore = useSettingsStore();
+
+/** Glyph faces follow the active skin; the prop is kept as an explicit override. */
+const glyphs = computed(() => props.glyphs || usesFaceGlyphs(settingsStore.settings.skin));
 
 const resetKey = computed(() => connection.releaseEpoch);
 const paired = computed(() => connection.status === "paired");
@@ -123,7 +127,7 @@ const faces = ["y", "x", "b", "a"] as const;
             :reset-key="resetKey"
             @change="onButton(face, $event)"
           >
-            <FaceLabel :button="face" :glyphs="props.glyphs" />
+            <FaceLabel :button="face" :glyphs="glyphs" />
           </PadButton>
         </div>
         <div class="cluster-bottom stick-wrap">
