@@ -1,7 +1,9 @@
 import { DEFAULT_MAPPING } from "@gamepad/shared";
 import { describe, expect, it } from "vitest";
+import { defaultLayout } from "../src/domain/customLayout.js";
 import {
   SKINS,
+  isSkinId,
   defaultSettings,
   parseStoredServer,
   parseStoredSettings,
@@ -27,6 +29,7 @@ describe("parseStoredSettings", () => {
       stickDeadzone: 0.2,
       mouseSensitivity: 2500,
       mapping: { buttons: { a: "j" }, leftStick: { up: "i", down: "k", left: "j", right: "l" } },
+      customPhoto: null,
     };
     expect(parseStoredSettings(JSON.stringify(stored))).toEqual(stored);
   });
@@ -52,6 +55,34 @@ describe("parseStoredSettings", () => {
 
   it("draws face glyphs only for the glyph skins", () => {
     expect(SKINS.filter((skin) => usesFaceGlyphs(skin.id)).map((skin) => skin.id)).toEqual(["geo", "shapes", "midnight"]);
+  });
+});
+
+describe("custom photo settings", () => {
+  const photo = { imageKey: "photo-abc", width: 1600, height: 900, layout: defaultLayout(16 / 9) };
+
+  it("accepts the custom skin id", () => {
+    expect(isSkinId("custom")).toBe(true);
+    expect(defaultSettings().customPhoto).toBeNull();
+  });
+
+  it("restores a stored custom photo and its layout", () => {
+    const restored = parseStoredSettings(JSON.stringify({ skin: "custom", customPhoto: photo }));
+    expect(restored.skin).toBe("custom");
+    expect(restored.customPhoto).toEqual(photo);
+  });
+
+  it("falls back to the template when the stored layout is unusable", () => {
+    const restored = parseStoredSettings(JSON.stringify({ customPhoto: { ...photo, layout: { version: 7 } } }));
+    expect(restored.customPhoto?.layout).toEqual(defaultLayout(16 / 9));
+  });
+
+  it("drops invalid photo metadata and leaves the custom skin without a photo", () => {
+    for (const bad of [{ ...photo, imageKey: "../evil" }, { ...photo, width: 0 }, { ...photo, height: "x" }, "photo"]) {
+      const restored = parseStoredSettings(JSON.stringify({ skin: "custom", customPhoto: bad }));
+      expect(restored.customPhoto).toBeNull();
+      expect(restored.skin).toBe("pro");
+    }
   });
 });
 
