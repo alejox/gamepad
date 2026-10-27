@@ -1,4 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { createHash } from "node:crypto";
+import { hostname } from "node:os";
 import { describe, expect, it } from "vitest";
 import {
   type HostStatusSnapshot,
@@ -16,6 +18,7 @@ const snapshot = (): HostStatusSnapshot => ({
   pin: PIN,
   mode: "dry-run",
   controller: { connected: false, remoteAddress: null },
+  pending: null,
 });
 
 interface FakeResponse {
@@ -103,6 +106,38 @@ describe("host status HTTP handler", () => {
   });
 });
 
+describe("public discovery endpoint", () => {
+  it("answers /discover to any address and Host header, with CORS and without the PIN", () => {
+    const res = request("/discover", "192.168.1.50", "192.168.1.20:7531");
+    expect(res.status).toBe(200);
+    expect(res.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(res.headers["Content-Type"]).toContain("application/json");
+    expect(res.body).not.toContain(PIN);
+    expect(JSON.parse(res.body)).toEqual({ service: "alejox-gamepad", protocol: 1, name: hostname(), port: 7531 });
+  });
+
+  it("answers the CORS preflight for /discover", () => {
+    const res = request("/discover", "192.168.1.50", "192.168.1.20:7531", "OPTIONS");
+    expect(res.status).toBe(204);
+    expect(res.headers["Access-Control-Allow-Origin"]).toBe("*");
+    expect(res.headers["Access-Control-Allow-Methods"]).toContain("GET");
+    expect(res.body).toBe("");
+  });
+
+  it("rejects other methods on /discover", () => {
+    const res = request("/discover", "192.168.1.50", "192.168.1.20:7531", "POST");
+    expect(res.status).toBe(405);
+    expect(res.headers["Access-Control-Allow-Origin"]).toBe("*");
+  });
+
+  it("keeps approve/deny loopback-only", () => {
+    for (const path of ["/approve", "/deny"]) {
+      expect(request(path, "192.168.1.50", "192.168.1.20:7531", "POST").status).toBe(403);
+      expect(request(path, "127.0.0.1", "attacker.example:7531", "POST").status).toBe(403);
+    }
+  });
+});
+
 describe("renderHostStatusPage", () => {
   it("renders the PIN, addresses and mode", () => {
     const html = renderHostStatusPage(snapshot());
@@ -117,5 +152,32 @@ describe("renderHostStatusPage", () => {
     const html = renderHostStatusPage({ ...snapshot(), addresses: ["<script>alert(1)</script>"] });
     expect(html).not.toContain("<script>alert(1)</script>");
     expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("renders a pending request card with escaped device name and Allow/Deny buttons", () => {
+    const html = renderHostStatusPage({
+      ...snapshot(),
+      pending: { remoteAddress: "192.168.1.77", device: "<img src=x onerror=alert(1)>" },
+    });
+    expect(html).toContain("Connection request from");
+    expect(html).toContain("192.168.1.77");
+    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
+    expect(html).not.toContain("<img src=x");
+    expect(html).toContain(">Allow<");
+    expect(html).toContain(">Deny<");
+  });
+
+  it("hides the request card when nothing is pending", () => {
+    expect(renderHostStatusPage(snapshot())).toMatch(/id="request"[^>]*hidden/);
+  });
+
+  it("allows exactly the page script through a CSP hash", () => {
+    const res = request("/", "127.0.0.1");
+    const csp = res.headers["Content-Security-Policy"] ?? "";
+    const scriptSrc = /script-src ([^;]+)/.exec(csp)?.[1] ?? "";
+    expect(scriptSrc).toMatch(/^'sha256-[A-Za-z0-9+/=]+'$/);
+    const script = /<script>([\s\S]*?)<\/script>/.exec(res.body)?.[1] ?? "";
+    const digest = createHash("sha256").update(script).digest("base64");
+    expect(scriptSrc).toBe(`'sha256-${digest}'`);
   });
 });

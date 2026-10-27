@@ -49,7 +49,12 @@ async function main(): Promise<void> {
       pin: config.pin,
       mode: config.dryRun ? "dry-run" : "emulation",
       controller: server.controllerStatus(),
+      pending: server.pendingRequest(),
     }),
+    approval: {
+      approve: () => server.approvePending(),
+      deny: () => server.denyPending(),
+    },
   });
   const server: WebSocketGamepadServer = new WebSocketGamepadServer({
     port: config.port,

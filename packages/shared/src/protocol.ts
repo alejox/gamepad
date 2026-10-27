@@ -6,6 +6,24 @@ export const PROTOCOL_VERSION = 1;
 
 const PIN_PATTERN = /^\d{6}$/;
 
+/** Service id answered by the host's public `GET /discover` endpoint. */
+export const DISCOVERY_SERVICE = "alejox-gamepad";
+
+/** Maximum length of the device name sent with an approval request. */
+export const DEVICE_NAME_MAX_LENGTH = 40;
+
+// C0/C1 control characters (includes newlines and tabs).
+const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/;
+
+/** Public `GET /discover` response. Never carries the PIN. */
+export interface DiscoveryInfo {
+  service: typeof DISCOVERY_SERVICE;
+  protocol: number;
+  /** Host computer name, for display on the phone. */
+  name: string;
+  port: number;
+}
+
 /** Allowed cursor speed (pixels per second at full right-stick deflection). */
 export const MOUSE_SENSITIVITY_RANGE = { min: 100, max: 5000 } as const;
 
@@ -15,6 +33,20 @@ export interface HelloMessage {
   pin: string;
   mapping?: KeyMapping;
   /** Optional per-session cursor speed; the server default applies when absent. */
+  mouseSensitivity?: number;
+}
+
+/**
+ * Asks the host user to approve this device instead of sending a PIN.
+ * The server answers `pending`, then `welcome` (approved), `denied`, or an
+ * error (`busy`, `timeout`, `version`).
+ */
+export interface RequestMessage {
+  t: "request";
+  v: number;
+  /** Human-readable device name shown on the host; trimmed, 1..DEVICE_NAME_MAX_LENGTH chars. */
+  device: string;
+  mapping?: KeyMapping;
   mouseSensitivity?: number;
 }
 
@@ -45,7 +77,10 @@ export interface PingMessage {
   ts: number;
 }
 
-export type ClientMessage = HelloMessage | ButtonMessage | StickMessage | MappingMessage | PingMessage;
+export type ClientMessage =
+  | HelloMessage
+  | RequestMessage
+  | ButtonMessage | StickMessage | MappingMessage | PingMessage;
 
 export const ERROR_CODES = [
   "bad_pin",
@@ -60,6 +95,10 @@ export type ErrorCode = (typeof ERROR_CODES)[number];
 
 export type ServerMessage =
   | { t: "welcome" }
+  /** Approval request received; waiting for the host user. */
+  | { t: "pending" }
+  /** The host user rejected the approval request; the socket closes next. */
+  | { t: "denied" }
   | { t: "error"; code: ErrorCode }
   | { t: "pong"; ts: number };
 
@@ -81,20 +120,42 @@ function parseSensitivity(msg: UnknownRecord): number | undefined | null {
     : null;
 }
 
+/** Copies the optional session settings shared by hello and request. False when invalid. */
+function parseSessionSettings(
+  msg: UnknownRecord,
+  target: { mapping?: KeyMapping; mouseSensitivity?: number },
+): boolean {
+  if (msg.mapping !== undefined) {
+    const mapping = parseMapping(msg.mapping);
+    if (!mapping) return false;
+    target.mapping = mapping;
+  }
+  const sensitivity = parseSensitivity(msg);
+  if (sensitivity === null) return false;
+  if (sensitivity !== undefined) target.mouseSensitivity = sensitivity;
+  return true;
+}
+
 function parseHello(msg: UnknownRecord): HelloMessage | null {
   if (!Number.isInteger(msg.v) || typeof msg.pin !== "string" || !PIN_PATTERN.test(msg.pin)) {
     return null;
   }
   const hello: HelloMessage = { t: "hello", v: msg.v as number, pin: msg.pin };
-  if (msg.mapping !== undefined) {
-    const mapping = parseMapping(msg.mapping);
-    if (!mapping) return null;
-    hello.mapping = mapping;
-  }
-  const sensitivity = parseSensitivity(msg);
-  if (sensitivity === null) return null;
-  if (sensitivity !== undefined) hello.mouseSensitivity = sensitivity;
-  return hello;
+  return parseSessionSettings(msg, hello) ? hello : null;
+}
+
+function parseDeviceName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const device = value.trim();
+  if (device.length === 0 || device.length > DEVICE_NAME_MAX_LENGTH || CONTROL_CHARS.test(device)) return null;
+  return device;
+}
+
+function parseRequest(msg: UnknownRecord): RequestMessage | null {
+  const device = parseDeviceName(msg.device);
+  if (!Number.isInteger(msg.v) || device === null) return null;
+  const request: RequestMessage = { t: "request", v: msg.v as number, device };
+  return parseSessionSettings(msg, request) ? request : null;
 }
 
 /** Parses and validates an untrusted client frame. Returns null when invalid. */
@@ -105,6 +166,8 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   switch (msg.t) {
     case "hello":
       return parseHello(msg);
+    case "request":
+      return parseRequest(msg);
     case "btn":
       return isButtonId(msg.id) && typeof msg.down === "boolean"
         ? { t: "btn", id: msg.id, down: msg.down }
@@ -133,7 +196,9 @@ export function parseServerMessage(raw: string): ServerMessage | null {
 
   switch (msg.t) {
     case "welcome":
-      return { t: "welcome" };
+    case "pending":
+    case "denied":
+      return { t: msg.t };
     case "pong":
       return isFiniteNumber(msg.ts) ? { t: "pong", ts: msg.ts } : null;
     case "error":

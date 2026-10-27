@@ -5,7 +5,9 @@ import {
   type ClientMessage,
   DEFAULT_MAPPING,
   type ErrorCode,
+  type KeyMapping,
   PROTOCOL_VERSION,
+  type RequestMessage,
   type ServerMessage,
   encodeMessage,
   parseClientMessage,
@@ -14,7 +16,7 @@ import { type WebSocket, WebSocketServer } from "ws";
 import { dispatchKeyActions } from "../application/dispatchKeyActions.js";
 import { ControllerState, type KeyAction } from "../domain/ControllerState.js";
 import { MouseMotion, type MouseMotionOptions } from "../domain/MouseMotion.js";
-import type { ControllerStatus, ControllerStatusListener } from "../ports/ControllerStatus.js";
+import type { ControllerStatus, ControllerStatusListener, PendingRequest } from "../ports/ControllerStatus.js";
 import type { InputDriver } from "../ports/InputDriver.js";
 import type { Logger } from "../ports/Logger.js";
 
@@ -28,12 +30,14 @@ export interface GamepadServerOptions {
   deadzone: number;
   mouse: MouseMotionOptions;
   helloTimeoutMs?: number;
+  /** How long an approval request waits for the host user (default 30 s). */
+  approvalTimeoutMs?: number;
   /** Mouse tick period; ~8 ms is about 120 Hz. */
   tickIntervalMs?: number;
   now?: () => number;
   /** Plain HTTP requests on the same port; without it they get 426. */
   http?: HttpRequestHandler;
-  /** Called whenever a controller pairs or disconnects. */
+  /** Called whenever a controller pairs or disconnects, or the pending request changes. */
   onStatusChange?: ControllerStatusListener;
 }
 
@@ -59,6 +63,15 @@ interface Session {
   remote: string;
 }
 
+interface PendingApproval {
+  socket: WebSocket;
+  remote: string;
+  device: string;
+  timer: NodeJS.Timeout;
+  /** Promotes the waiting connection to the active session. */
+  activate(): void;
+}
+
 /**
  * WebSocket transport: PIN pairing, a single active controller, and
  * translation of protocol messages into InputDriver calls.
@@ -67,12 +80,15 @@ export class WebSocketGamepadServer {
   private wss: WebSocketServer | undefined;
   private httpServer: Server | undefined;
   private active: Session | undefined;
+  private pending: PendingApproval | undefined;
   private readonly helloTimeoutMs: number;
+  private readonly approvalTimeoutMs: number;
   private readonly tickIntervalMs: number;
   private readonly now: () => number;
 
   constructor(private readonly options: GamepadServerOptions) {
     this.helloTimeoutMs = options.helloTimeoutMs ?? 5000;
+    this.approvalTimeoutMs = options.approvalTimeoutMs ?? 30_000;
     this.tickIntervalMs = options.tickIntervalMs ?? 8;
     this.now = options.now ?? (() => performance.now());
   }
@@ -82,6 +98,37 @@ export class WebSocketGamepadServer {
     return this.active
       ? { connected: true, remoteAddress: this.active.remote }
       : { connected: false, remoteAddress: null };
+  }
+
+  /** The phone waiting for approval, if any. */
+  pendingRequest(): PendingRequest | null {
+    return this.pending ? { remoteAddress: this.pending.remote, device: this.pending.device } : null;
+  }
+
+  /** Accepts the pending request as the active controller. False when nothing is pending. */
+  approvePending(): boolean {
+    const pending = this.takePending();
+    if (!pending) return false;
+    if (this.active) {
+      // A PIN pairing won the race while the request was waiting.
+      this.reject(pending.socket, "busy");
+    } else {
+      pending.activate();
+      this.options.logger.info(`Controller approved: ${pending.device} (${pending.remote})`);
+    }
+    this.emitStatus();
+    return true;
+  }
+
+  /** Rejects the pending request. False when nothing is pending. */
+  denyPending(): boolean {
+    const pending = this.takePending();
+    if (!pending) return false;
+    send(pending.socket, { t: "denied" });
+    pending.socket.close(CLOSE_POLICY, "denied");
+    this.options.logger.info(`Controller request denied: ${pending.device} (${pending.remote})`);
+    this.emitStatus();
+    return true;
   }
 
   /**
@@ -110,6 +157,7 @@ export class WebSocketGamepadServer {
   /** Releases all held input and closes every connection. */
   async stop(): Promise<void> {
     if (this.active) this.endSession(this.active);
+    if (this.takePending()) this.emitStatus();
     const wss = this.wss;
     const httpServer = this.httpServer;
     this.wss = undefined;
@@ -146,6 +194,7 @@ export class WebSocketGamepadServer {
     }
 
     let session: Session | undefined;
+    let awaitingApproval = false;
     const helloTimer = setTimeout(() => this.reject(socket, "timeout"), this.helloTimeoutMs);
 
     socket.on("message", (data, isBinary) => {
@@ -154,7 +203,19 @@ export class WebSocketGamepadServer {
         this.handleMessage(session, message);
         return;
       }
+      if (awaitingApproval) {
+        // Only keep-alive pings are answered until the host user decides.
+        if (message?.t === "ping") send(socket, { t: "pong", ts: message.ts });
+        return;
+      }
       clearTimeout(helloTimer);
+      if (message?.t === "request") {
+        awaitingApproval = this.requestApproval(socket, message, remote, () => {
+          awaitingApproval = false;
+          session = this.activate(socket, message, remote);
+        });
+        return;
+      }
       session = this.pair(socket, message, remote);
       if (session) {
         logger.info(`Controller connected from ${remote}`);
@@ -164,6 +225,11 @@ export class WebSocketGamepadServer {
 
     socket.on("close", () => {
       clearTimeout(helloTimer);
+      if (this.pending?.socket === socket) {
+        this.takePending();
+        logger.info(`Controller request withdrawn (${remote})`);
+        this.emitStatus();
+      }
       if (session) {
         this.endSession(session);
         logger.info(`Controller disconnected (${remote}); all keys released`);
@@ -178,13 +244,60 @@ export class WebSocketGamepadServer {
     if (message.v !== PROTOCOL_VERSION) return this.reject(socket, "version");
     if (!pinMatches(message.pin, this.options.pin)) return this.reject(socket, "bad_pin");
     if (this.active) return this.reject(socket, "busy");
+    return this.activate(socket, message, remote);
+  }
 
+  /** Registers the single pending request. False (and the socket is closed) when rejected. */
+  private requestApproval(
+    socket: WebSocket,
+    message: RequestMessage,
+    remote: string,
+    activate: () => void,
+  ): boolean {
+    if (message.v !== PROTOCOL_VERSION) return this.reject(socket, "version") ?? false;
+    if (this.active || this.pending) return this.reject(socket, "busy") ?? false;
+
+    const pending: PendingApproval = {
+      socket,
+      remote,
+      device: message.device,
+      activate,
+      timer: setTimeout(() => {
+        if (this.pending !== pending) return;
+        this.takePending();
+        this.reject(socket, "timeout");
+        this.options.logger.info(`Controller request timed out: ${pending.device} (${remote})`);
+        this.emitStatus();
+      }, this.approvalTimeoutMs),
+    };
+    this.pending = pending;
+    send(socket, { t: "pending" });
+    this.options.logger.info(`Controller request from ${message.device} (${remote}); approve it on the host page`);
+    this.emitStatus();
+    return true;
+  }
+
+  /** Clears the pending request and its timer; returns it when there was one. */
+  private takePending(): PendingApproval | undefined {
+    const pending = this.pending;
+    if (!pending) return undefined;
+    clearTimeout(pending.timer);
+    this.pending = undefined;
+    return pending;
+  }
+
+  /** Makes the connection the active controller and welcomes it. */
+  private activate(
+    socket: WebSocket,
+    settings: { mapping?: KeyMapping; mouseSensitivity?: number },
+    remote: string,
+  ): Session {
     const session: Session = {
       socket,
-      state: new ControllerState(message.mapping ?? DEFAULT_MAPPING, { deadzone: this.options.deadzone }),
+      state: new ControllerState(settings.mapping ?? DEFAULT_MAPPING, { deadzone: this.options.deadzone }),
       motion: new MouseMotion({
         ...this.options.mouse,
-        sensitivity: message.mouseSensitivity ?? this.options.mouse.sensitivity,
+        sensitivity: settings.mouseSensitivity ?? this.options.mouse.sensitivity,
       }),
       ticker: undefined,
       lastTick: 0,
@@ -216,7 +329,8 @@ export class WebSocketGamepadServer {
         send(session.socket, { t: "pong", ts: message.ts });
         return;
       case "hello":
-        return; // Already paired; a repeated hello is harmless.
+      case "request":
+        return; // Already paired; a repeated handshake is harmless.
       default:
         send(session.socket, { t: "error", code: "bad_message" });
     }

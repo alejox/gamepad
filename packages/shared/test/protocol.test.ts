@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   BUTTON_IDS,
   DEFAULT_MAPPING,
+  DEVICE_NAME_MAX_LENGTH,
+  DISCOVERY_SERVICE,
   MOUSE_SENSITIVITY_RANGE,
   PROTOCOL_VERSION,
   parseClientMessage,
@@ -128,5 +130,53 @@ describe("mouseSensitivity (optional)", () => {
   ])("rejects a value that is %s", (_name, value) => {
     expect(parseClientMessage(json({ t: "hello", v: 1, pin: "123456", mouseSensitivity: value }))).toBeNull();
     expect(parseClientMessage(json({ t: "mapping", mapping: DEFAULT_MAPPING, mouseSensitivity: value }))).toBeNull();
+  });
+});
+
+describe("approval pairing (request without PIN)", () => {
+  it("accepts a request with a device name, trimming whitespace", () => {
+    expect(parseClientMessage(json({ t: "request", v: PROTOCOL_VERSION, device: "  Pixel 8  " }))).toEqual({
+      t: "request",
+      v: 1,
+      device: "Pixel 8",
+    });
+  });
+
+  it("accepts optional mapping and mouseSensitivity like hello", () => {
+    expect(
+      parseClientMessage(json({ t: "request", v: 1, device: "Phone", mapping: DEFAULT_MAPPING, mouseSensitivity: 900 })),
+    ).toEqual({ t: "request", v: 1, device: "Phone", mapping: DEFAULT_MAPPING, mouseSensitivity: 900 });
+  });
+
+  it("keeps an unknown protocol version so the server can report it", () => {
+    expect(parseClientMessage(json({ t: "request", v: 7, device: "Phone" }))).toMatchObject({ v: 7 });
+  });
+
+  it.each([
+    ["missing device", { t: "request", v: 1 }],
+    ["empty device", { t: "request", v: 1, device: "   " }],
+    ["numeric device", { t: "request", v: 1, device: 42 }],
+    ["too long device", { t: "request", v: 1, device: "x".repeat(DEVICE_NAME_MAX_LENGTH + 1) }],
+    ["control characters", { t: "request", v: 1, device: "Phone\nInjected" }],
+    ["fractional version", { t: "request", v: 1.5, device: "Phone" }],
+    ["invalid mapping", { t: "request", v: 1, device: "Phone", mapping: { buttons: { a: "rm -rf" } } }],
+    ["out-of-range sensitivity", { t: "request", v: 1, device: "Phone", mouseSensitivity: 1 }],
+  ])("rejects request with %s", (_name, payload) => {
+    expect(parseClientMessage(json(payload))).toBeNull();
+  });
+
+  it("accepts a device name at the maximum length", () => {
+    const device = "x".repeat(DEVICE_NAME_MAX_LENGTH);
+    expect(parseClientMessage(json({ t: "request", v: 1, device }))).toMatchObject({ device });
+  });
+
+  it("parses the server approval outcomes", () => {
+    expect(parseServerMessage(json({ t: "pending" }))).toEqual({ t: "pending" });
+    expect(parseServerMessage(json({ t: "denied" }))).toEqual({ t: "denied" });
+    expect(parseServerMessage(json({ t: "error", code: "timeout" }))).toEqual({ t: "error", code: "timeout" });
+  });
+
+  it("names the discovery service", () => {
+    expect(DISCOVERY_SERVICE).toBe("alejox-gamepad");
   });
 });

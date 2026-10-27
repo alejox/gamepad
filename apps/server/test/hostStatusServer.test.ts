@@ -22,6 +22,7 @@ async function startServer(): Promise<number> {
       pin: PIN,
       mode: "dry-run",
       controller: server?.controllerStatus() ?? { connected: false, remoteAddress: null },
+      pending: server?.pendingRequest() ?? null,
     }),
   });
   server = new WebSocketGamepadServer({

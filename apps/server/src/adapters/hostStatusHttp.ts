@@ -1,6 +1,8 @@
-import type { ServerResponse } from "node:http";
-import type { ControllerStatus } from "../ports/ControllerStatus.js";
-import { renderHostStatusPage } from "./hostStatusPage.js";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { hostname } from "node:os";
+import { DISCOVERY_SERVICE, type DiscoveryInfo, PROTOCOL_VERSION } from "@gamepad/shared";
+import type { ControllerStatus, PairingApproval, PendingRequest } from "../ports/ControllerStatus.js";
+import { HOST_STATUS_SCRIPT_HASH, renderHostStatusPage } from "./hostStatusPage.js";
 import type { HttpRequestHandler } from "./WebSocketGamepadServer.js";
 
 export type HostMode = "dry-run" | "emulation";
@@ -13,6 +15,8 @@ export interface HostStatusSnapshot {
   pin: string;
   mode: HostMode;
   controller: ControllerStatus;
+  /** Phone waiting for Allow / Deny, or null. */
+  pending: PendingRequest | null;
 }
 
 export interface HostStatusHttp extends HttpRequestHandler {
@@ -22,14 +26,25 @@ export interface HostStatusHttp extends HttpRequestHandler {
 
 export interface HostStatusHttpOptions {
   snapshot: () => HostStatusSnapshot;
+  /** Backs `POST /approve` and `POST /deny`; without it both answer 409. */
+  approval?: PairingApproval;
+  /** Name announced by `/discover`; defaults to the OS host name. */
+  hostName?: string;
 }
 
 const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 const NO_STORE = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
-const PAGE_CSP =
-  "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+const PAGE_CSP = `default-src 'none'; style-src 'unsafe-inline'; script-src '${HOST_STATUS_SCRIPT_HASH}'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`;
+const DISCOVER_HEADERS = {
+  ...NO_STORE,
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Max-Age": "600",
+};
+const PAGE_PATHS = new Set(["/", "/status", "/events"]);
+const ACTION_PATHS = new Set(["/approve", "/deny"]);
 
 /** True only for requests that originate on this machine. */
 export function isLoopbackAddress(address: string | undefined): boolean {
@@ -46,8 +61,33 @@ export function isLoopbackHost(host: string | undefined): boolean {
   return LOOPBACK_HOSTNAMES.has(hostname);
 }
 
-/** Serves `/` (HTML), `/status` (JSON) and `/events` (SSE) to loopback clients. */
-export function createHostStatusHttp({ snapshot }: HostStatusHttpOptions): HostStatusHttp {
+/**
+ * CSRF guard for state-changing actions: a JSON body (never sendable by a
+ * plain form) and an Origin naming exactly the loopback host this page is on.
+ */
+export function isTrustedAction(req: IncomingMessage): boolean {
+  const contentType = (req.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase();
+  if (contentType !== "application/json") return false;
+  const origin = req.headers.origin;
+  const host = req.headers.host?.toLowerCase();
+  if (!origin || !host) return false;
+  try {
+    const url = new URL(origin);
+    return url.protocol === "http:" && url.host === host && isLoopbackHost(url.host);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Serves the public `/discover` probe to anyone, and `/` (HTML), `/status`
+ * (JSON), `/events` (SSE), `POST /approve` and `POST /deny` to loopback clients.
+ */
+export function createHostStatusHttp({
+  snapshot,
+  approval,
+  hostName = hostname(),
+}: HostStatusHttpOptions): HostStatusHttp {
   const streams = new Set<ServerResponse>();
 
   const sendEvent = (res: ServerResponse): void => {
@@ -59,15 +99,63 @@ export function createHostStatusHttp({ snapshot }: HostStatusHttpOptions): HostS
     res.end(text);
   };
 
+  const discover = (req: IncomingMessage, res: ServerResponse): void => {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, DISCOVER_HEADERS);
+      res.end();
+      return;
+    }
+    if (req.method !== "GET") {
+      res.writeHead(405, { ...DISCOVER_HEADERS, Allow: "GET, OPTIONS" });
+      res.end();
+      return;
+    }
+    const info: DiscoveryInfo = {
+      service: DISCOVERY_SERVICE,
+      protocol: PROTOCOL_VERSION,
+      name: hostName,
+      port: req.socket.localPort ?? snapshot().port,
+    };
+    res.writeHead(200, { ...DISCOVER_HEADERS, "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(info));
+  };
+
+  const act = (req: IncomingMessage, res: ServerResponse, path: string): void => {
+    if (req.method !== "POST") {
+      plain(res, 405, "Method not allowed\n", { Allow: "POST" });
+      return;
+    }
+    if (!isTrustedAction(req)) {
+      plain(res, 403, "Forbidden: cross-site request rejected.\n");
+      return;
+    }
+    req.resume(); // The body carries nothing; drain it so the connection can be reused.
+    const done = path === "/approve" ? approval?.approve() : approval?.deny();
+    if (!done) {
+      plain(res, 409, "No pending connection request\n");
+      return;
+    }
+    res.writeHead(204, NO_STORE);
+    res.end();
+  };
+
   return {
     handle(req, res) {
+      const path = new URL(req.url ?? "/", "http://localhost").pathname;
+      // Public and cheap: answered before any other check so subnet scans stay fast.
+      if (path === "/discover") {
+        discover(req, res);
+        return;
+      }
       if (!isLoopbackAddress(req.socket.remoteAddress) || !isLoopbackHost(req.headers.host)) {
         plain(res, 403, "Forbidden: the host status page is only available on this computer.\n");
         return;
       }
-      const path = new URL(req.url ?? "/", "http://localhost").pathname;
-      const known = path === "/" || path === "/status" || path === "/events";
-      if (!known) {
+      if (ACTION_PATHS.has(path)) {
+        act(req, res, path);
+        return;
+      }
+      if (!PAGE_PATHS.has(path)) {
         plain(res, 404, "Not found\n");
         return;
       }

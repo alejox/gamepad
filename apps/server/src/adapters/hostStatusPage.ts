@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { HostStatusSnapshot } from "./hostStatusHttp.js";
 
 const MODE_LABELS: Record<HostStatusSnapshot["mode"], string> = {
@@ -18,6 +19,59 @@ function controllerText(snapshot: HostStatusSnapshot): string {
 }
 
 /**
+ * The page's only script. It is static so the CSP can allow it by hash
+ * instead of 'unsafe-inline'. Untrusted values are written with textContent.
+ */
+const PAGE_SCRIPT = `
+(() => {
+  const modes = ${JSON.stringify(MODE_LABELS).replace(/</g, "\\u003c")};
+  const $ = (id) => document.getElementById(id);
+  const render = (s) => {
+    const list = $("addresses");
+    list.replaceChildren(...(s.addresses.length ? s.addresses : ["No LAN IPv4 found (port " + s.port + ")"]).map((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      return item;
+    }));
+    $("pin").textContent = s.pin;
+    $("mode").textContent = modes[s.mode] || s.mode;
+    const c = s.controller;
+    $("dot").classList.toggle("on", c.connected);
+    $("controller").textContent = c.connected
+      ? (c.remoteAddress ? "Connected from " + c.remoteAddress : "Connected")
+      : "Waiting for a controller";
+    const p = s.pending;
+    $("request").hidden = !p;
+    $("request-device").textContent = p ? p.device : "";
+    $("request-address").textContent = p ? p.remoteAddress : "";
+    $("request-error").textContent = "";
+  };
+  const decide = async (path) => {
+    const buttons = [$("allow"), $("deny")];
+    buttons.forEach((button) => { button.disabled = true; });
+    try {
+      const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      if (!response.ok) $("request-error").textContent = response.status === 409 ? "The request is no longer pending." : "Action failed (" + response.status + ").";
+    } catch {
+      $("request-error").textContent = "Server unreachable.";
+    } finally {
+      buttons.forEach((button) => { button.disabled = false; });
+    }
+  };
+  $("allow").addEventListener("click", () => decide("/approve"));
+  $("deny").addEventListener("click", () => decide("/deny"));
+  const server = $("server");
+  const events = new EventSource("/events");
+  events.onopen = () => { server.textContent = "Server started"; server.classList.remove("down"); };
+  events.onmessage = (event) => render(JSON.parse(event.data));
+  events.onerror = () => { server.textContent = "Server unreachable"; server.classList.add("down"); };
+})();
+`;
+
+/** CSP source expression that allows exactly {@link PAGE_SCRIPT}. */
+export const HOST_STATUS_SCRIPT_HASH = `sha256-${createHash("sha256").update(PAGE_SCRIPT).digest("base64")}`;
+
+/**
  * Self-contained host status page (no external assets). Initial values are
  * rendered server-side; `/events` keeps them live through EventSource.
  */
@@ -27,6 +81,7 @@ export function renderHostStatusPage(snapshot: HostStatusSnapshot): string {
       ? snapshot.addresses.map((address) => `<li>${escapeHtml(address)}</li>`).join("")
       : `<li class="muted">No LAN IPv4 found (port ${snapshot.port})</li>`;
   const connected = snapshot.controller.connected;
+  const pending = snapshot.pending;
 
   return `<!doctype html>
 <html lang="en">
@@ -86,6 +141,31 @@ export function renderHostStatusPage(snapshot: HostStatusSnapshot): string {
   .status { display: flex; align-items: center; gap: 8px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--off); box-shadow: 0 0 8px var(--off); flex: none; }
   .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  [hidden] { display: none !important; }
+  .request {
+    margin-bottom: 20px;
+    padding: 16px;
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 12%, var(--card));
+  }
+  .request h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+  .request p { margin: 0 0 12px; }
+  .actions { display: flex; gap: 10px; }
+  .actions button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text);
+    background: var(--card);
+  }
+  .actions button.allow { background: var(--ok); border-color: var(--ok); color: #08130c; }
+  .actions button:disabled { opacity: 0.6; cursor: default; }
+  .error { color: var(--off); font-size: 13px; margin: 8px 0 0; min-height: 1em; }
 </style>
 </head>
 <body>
@@ -94,6 +174,15 @@ export function renderHostStatusPage(snapshot: HostStatusSnapshot): string {
     <h1>Gamepad Host</h1>
     <span class="badge" id="server">Server started</span>
   </div>
+  <section class="request" id="request" aria-live="polite"${pending ? "" : " hidden"}>
+    <h2>Connection request from <span id="request-device">${escapeHtml(pending?.device ?? "")}</span> (<span id="request-address">${escapeHtml(pending?.remoteAddress ?? "")}</span>)</h2>
+    <p class="muted">Allow it to use this computer as a gamepad.</p>
+    <div class="actions">
+      <button type="button" class="allow" id="allow">Allow</button>
+      <button type="button" id="deny">Deny</button>
+    </div>
+    <p class="error" id="request-error"></p>
+  </section>
   <dl>
     <div><dt>Address</dt><dd><ul id="addresses">${addresses}</ul></dd></div>
     <div><dt>PIN</dt><dd class="pin" id="pin">${escapeHtml(snapshot.pin)}</dd></div>
@@ -101,32 +190,7 @@ export function renderHostStatusPage(snapshot: HostStatusSnapshot): string {
     <div><dt>Gamepad</dt><dd class="status"><span class="dot${connected ? " on" : ""}" id="dot"></span><span id="controller">${escapeHtml(controllerText(snapshot))}</span></dd></div>
   </dl>
 </main>
-<script>
-(() => {
-  const modes = ${JSON.stringify(MODE_LABELS).replace(/</g, "\\u003c")};
-  const $ = (id) => document.getElementById(id);
-  const render = (s) => {
-    const list = $("addresses");
-    list.replaceChildren(...(s.addresses.length ? s.addresses : ["No LAN IPv4 found (port " + s.port + ")"]).map((text) => {
-      const item = document.createElement("li");
-      item.textContent = text;
-      return item;
-    }));
-    $("pin").textContent = s.pin;
-    $("mode").textContent = modes[s.mode] || s.mode;
-    const c = s.controller;
-    $("dot").classList.toggle("on", c.connected);
-    $("controller").textContent = c.connected
-      ? (c.remoteAddress ? "Connected from " + c.remoteAddress : "Connected")
-      : "Waiting for a controller";
-  };
-  const server = $("server");
-  const events = new EventSource("/events");
-  events.onopen = () => { server.textContent = "Server started"; server.classList.remove("down"); };
-  events.onmessage = (event) => render(JSON.parse(event.data));
-  events.onerror = () => { server.textContent = "Server unreachable"; server.classList.add("down"); };
-})();
-</script>
+<script>${PAGE_SCRIPT}</script>
 </body>
 </html>
 `;
