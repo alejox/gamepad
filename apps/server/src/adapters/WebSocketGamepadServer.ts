@@ -145,9 +145,10 @@ export class WebSocketGamepadServer {
 
   /**
    * Starts listening and resolves with the bound port. WebSocket upgrades and
-   * plain HTTP requests share one port.
+   * plain HTTP requests share one port. `preferredPort` defaults to the
+   * configured port; callers may bind an OS-assigned port with `0`.
    */
-  start(): Promise<number> {
+  start(preferredPort: number = this.options.port): Promise<number> {
     return new Promise((resolve, reject) => {
       const httpServer = createServer((req, res) => this.handleHttp(req, res));
       const wss = new WebSocketServer({ server: httpServer, maxPayload: MAX_PAYLOAD_BYTES });
@@ -160,7 +161,7 @@ export class WebSocketGamepadServer {
       // Errors on the HTTP server are re-emitted by wss; logged above instead.
       wss.on("error", () => {});
       wss.on("connection", (socket, request) => this.handleConnection(socket, request.socket.remoteAddress));
-      httpServer.listen(this.options.port, this.options.host ?? "0.0.0.0");
+      httpServer.listen(preferredPort, this.options.host ?? "0.0.0.0");
       this.wss = wss;
       this.httpServer = httpServer;
     });

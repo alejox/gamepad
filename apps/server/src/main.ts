@@ -8,6 +8,7 @@ import { LoggingInputDriver } from "./adapters/LoggingInputDriver.js";
 import { lanIPv4Addresses } from "./adapters/networkAddresses.js";
 import { RobotInputDriver } from "./adapters/RobotInputDriver.js";
 import { selectDriver } from "./application/selectDriver.js";
+import { startServerWithFallback } from "./application/startServer.js";
 import { type ServerConfig, parseConfig } from "./config.js";
 import type { GamepadDriver } from "./ports/GamepadDriver.js";
 import type { InputDriver } from "./ports/InputDriver.js";
@@ -95,7 +96,7 @@ async function main(): Promise<void> {
     http: hostStatus,
     onStatusChange: () => hostStatus.notify(),
   });
-  port = await server.start();
+  port = await startServerWithFallback(server, config.port, logger);
   printBanner(config, port, driverInfo);
   if (shouldOpenBrowser({ packaged: process.env.GAMEPAD_PACKAGED === "1", open: config.open, platform: process.platform })) {
     createBrowserOpener()(`http://localhost:${port}/`);
