@@ -8,22 +8,39 @@ import {
 } from "@gamepad/shared";
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
+import { type Discover, browserDiscover } from "../adapters/discovery.js";
 import { type GamepadSocket, type SocketFactory, browserSocketFactory } from "../adapters/socket.js";
 import { serverUrl } from "../domain/address.js";
-import { describeError, unreachableMessage } from "../domain/errors.js";
+import { deviceName } from "../domain/device.js";
+import { discoveryCandidates } from "../domain/discovery.js";
+import {
+  deniedMessage,
+  describeError,
+  describeRequestError,
+  notFoundMessage,
+  unreachableMessage,
+} from "../domain/errors.js";
 import { reconnectDelay } from "../domain/reconnect.js";
 import { useSettingsStore } from "./settings.js";
 
-export type ConnectionStatus = "idle" | "connecting" | "paired" | "error";
+/** "searching": scanning the LAN; "awaiting": waiting for Allow on the PC. */
+export type ConnectionStatus = "idle" | "searching" | "connecting" | "awaiting" | "paired" | "error";
 
 interface ConnectionDeps {
   socketFactory: SocketFactory;
   now: () => number;
+  discover: Discover;
+  deviceName: () => string;
+  /** Hostname the app is served from (the PC in the browser dev loop). */
+  pageHost: () => string;
 }
 
 let deps: ConnectionDeps = {
   socketFactory: browserSocketFactory,
   now: () => performance.now(),
+  discover: browserDiscover,
+  deviceName: () => deviceName(typeof navigator === "undefined" ? "" : navigator.userAgent),
+  pageHost: () => (typeof location === "undefined" ? "" : location.hostname),
 };
 
 /** Overrides adapters (used by tests). */
@@ -34,11 +51,10 @@ export function configureConnection(next: Partial<ConnectionDeps>): void {
 const PING_INTERVAL_MS = 2000;
 const CONNECT_TIMEOUT_MS = 6000;
 
-interface Target {
-  host: string;
-  port: number;
-  pin: string;
-}
+/** PIN pairing, or host approval (no PIN) after LAN discovery. */
+type Target =
+  | { kind: "pin"; host: string; port: number; pin: string }
+  | { kind: "request"; host: string; port: number; device: string };
 
 export const useConnectionStore = defineStore("connection", () => {
   const settingsStore = useSettingsStore();
@@ -47,6 +63,8 @@ export const useConnectionStore = defineStore("connection", () => {
   const reconnecting = ref(false);
   const errorMessage = ref("");
   const latencyMs = ref<number | null>(null);
+  /** Name of the discovered PC (approval flow only). */
+  const hostName = ref("");
   /** Bumped whenever all input is force-released, so controls reset visuals. */
   const releaseEpoch = ref(0);
 
@@ -55,6 +73,9 @@ export const useConnectionStore = defineStore("connection", () => {
   let rejected = false;
   let wasPaired = false;
   let attempt = 0;
+  /** A reconnect already re-asked the PC user; never prompt again in a loop. */
+  let reRequested = false;
+  let discovery: AbortController | undefined;
   let pingTimer: ReturnType<typeof setInterval> | undefined;
   let connectTimer: ReturnType<typeof setTimeout> | undefined;
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
@@ -76,9 +97,15 @@ export const useConnectionStore = defineStore("connection", () => {
     return { t: "hello", v: PROTOCOL_VERSION, pin, mapping, mouseSensitivity };
   }
 
+  function request(device: string): ClientMessage {
+    const { mapping, mouseSensitivity } = settingsStore.settings;
+    return { t: "request", v: PROTOCOL_VERSION, device, mapping, mouseSensitivity };
+  }
+
   function open(): void {
     if (!target) return;
-    const { host, port, pin } = target;
+    const opening = target;
+    const { host, port } = opening;
     rejected = false;
     status.value = "connecting";
     let current: GamepadSocket | undefined;
@@ -87,7 +114,7 @@ export const useConnectionStore = defineStore("connection", () => {
         onOpen: () => {
           if (socket !== current) return;
           clearTimeout(connectTimer);
-          send(hello(pin));
+          send(opening.kind === "pin" ? hello(opening.pin) : request(opening.device));
         },
         onMessage: (raw) => {
           if (socket === current) handleMessage(raw);
@@ -111,15 +138,26 @@ export const useConnectionStore = defineStore("connection", () => {
       case "welcome":
         status.value = "paired";
         wasPaired = true;
+        reRequested = false;
+        if (target?.kind === "request") settingsStore.rememberServer(target.host, target.port);
         attempt = 0;
         reconnecting.value = false;
         errorMessage.value = "";
         clearInterval(pingTimer);
         pingTimer = setInterval(() => send({ t: "ping", ts: deps.now() }), PING_INTERVAL_MS);
         return;
+      case "pending":
+        status.value = "awaiting";
+        if (wasPaired) reRequested = true;
+        return;
+      case "denied":
+        rejected = true;
+        errorMessage.value = deniedMessage(hostName.value || "the PC");
+        return;
       case "error":
         rejected = true;
-        errorMessage.value = describeError(message.code);
+        errorMessage.value =
+          target?.kind === "request" ? describeRequestError(message.code) : describeError(message.code);
         return;
       case "pong":
         latencyMs.value = Math.max(0, Math.round(deps.now() - message.ts));
@@ -132,7 +170,9 @@ export const useConnectionStore = defineStore("connection", () => {
     clearTimers();
     held.clear();
     latencyMs.value = null;
-    if (wasPaired && !rejected && target) {
+    // An approval re-request that ended without a decision is not retried.
+    const retry = wasPaired && !rejected && !(target?.kind === "request" && reRequested);
+    if (retry && target) {
       reconnecting.value = true;
       status.value = "connecting";
       reconnectTimer = setTimeout(open, reconnectDelay(attempt++));
@@ -148,8 +188,10 @@ export const useConnectionStore = defineStore("connection", () => {
     status.value = "error";
   }
 
-  /** Closes the current socket without triggering reconnect logic. */
+  /** Closes the current socket (and any scan) without triggering reconnect logic. */
   function teardown(): void {
+    discovery?.abort();
+    discovery = undefined;
     clearTimers();
     const current = socket;
     socket = undefined;
@@ -158,13 +200,46 @@ export const useConnectionStore = defineStore("connection", () => {
     latencyMs.value = null;
   }
 
-  function connect(host: string, port: number, pin: string): void {
+  function reset(): void {
     teardown();
-    target = { host: host.trim(), port, pin };
+    target = undefined;
     wasPaired = false;
+    reRequested = false;
     attempt = 0;
     reconnecting.value = false;
     errorMessage.value = "";
+  }
+
+  function connect(host: string, port: number, pin: string): void {
+    reset();
+    hostName.value = "";
+    target = { kind: "pin", host: host.trim(), port, pin };
+    open();
+  }
+
+  /**
+   * Finds the PC on the LAN, then asks its user to approve this device (no
+   * PIN). Cancel with disconnect().
+   */
+  async function autoConnect(): Promise<void> {
+    releaseAll();
+    reset();
+    hostName.value = "";
+    status.value = "searching";
+    const scan = new AbortController();
+    discovery = scan;
+    const port = settingsStore.lastPort;
+    const hosts = discoveryCandidates({ lastHost: settingsStore.lastHost, pageHost: deps.pageHost() });
+    const found = await deps.discover(hosts, port, scan.signal);
+    // Cancelled or superseded by another connect while scanning.
+    if (discovery !== scan) return;
+    discovery = undefined;
+    if (!found) {
+      fail(notFoundMessage(port));
+      return;
+    }
+    hostName.value = found.info.name;
+    target = { kind: "request", host: found.host, port: found.info.port, device: deps.deviceName() };
     open();
   }
 
@@ -213,8 +288,10 @@ export const useConnectionStore = defineStore("connection", () => {
     reconnecting,
     errorMessage,
     latencyMs,
+    hostName,
     releaseEpoch,
     connect,
+    autoConnect,
     disconnect,
     releaseAll,
     pressButton,

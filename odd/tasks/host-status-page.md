@@ -46,7 +46,7 @@ phone browser (dev loop) and in the APK WebView without native code. Tradeoff:
 
 - [x] T1 Status page served over HTTP on the WS port, loopback-only, live status, dev script fix, tests — route: delegated (2+ non-trivial files: WebSocketGamepadServer, new HTTP/status adapter, main.ts, tests)
 - [x] T2 Server: public `GET /discover` (CORS, host name + protocol version, no PIN); protocol message to request approval without PIN; pending-approval state; Allow/Deny on the host page (loopback-only actions); tests — route: delegated (shared protocol + server + page)
-- [ ] T3 Mobile: central gamepad button / Connect screen action scans the /24 subnet for `/discover`, connects, shows "waiting for approval on PC", handles deny/timeout; tests — route: delegated (mobile stores/adapters/views)
+- [x] T3 Mobile: central gamepad button / Connect screen action scans the /24 subnet for `/discover`, connects, shows "waiting for approval on PC", handles deny/timeout; tests — route: delegated (mobile stores/adapters/views)
 - [x] T4 Mobile: new "Pro" skin (matte black dotted body, blue neon edge outline, L2/L1/R1/R2 top tabs, recessed sticks, dark round face buttons with colored letters Y green / X purple / B red / A blue, glowing central button). Original artwork only — no third-party logos or names — route: delegated (apps/mobile/src/domain/settings.ts, src/styles/skins.css, gamepad view markup if needed)
 
 ## Acceptance criteria
@@ -63,7 +63,8 @@ phone browser (dev loop) and in the APK WebView without native code. Tradeoff:
 T1 (2026-10-26): server tests 79/79 pass, typecheck clean (writer); parent spot check: tests 79/79, `curl localhost:7531/` → 200, `/status` JSON ok, LAN IP → 403. Extra: Host-header check against DNS rebinding.
 T4 (2026-10-26): mobile tests 34/34, typecheck clean (writer); parent spot check tests 34/34. "pro" is now default skin; decorative center emblem (protocol has no home button id — T3 may turn it into the connect button). Visual check pending on device → user confirmed via screenshot (looks good).
 T2 (2026-10-26): shared 58/58, server 102/102, all typechecks clean (writer); parent spot check: server 102/102, LAN `/discover` returns host info without PIN, POST /approve without Origin → 403. Protocol: client `{t:"request",v,device}`; server `pending` / `welcome` / `denied` / error `timeout|busy`. CSP now hash-based (no unsafe-inline).
+T3 (2026-10-26): mobile 67/67, typecheck clean, shared 58/58 (writer); parent spot check mobile 67/67. Denied/timeout/busy stop without retry; approved session drop re-requests approval once. Known gap: in the APK the WebView cannot know its own IP, so first-ever scan only covers last host + 192.168.0/1 and 10.0.0 subnets (user LAN is 192.168.10.x) → candidate T5: tiny native Capacitor plugin returning the Wi-Fi IPv4 to sweep the right /24.
 
 ## Next step
 
-T3: mobile central button → subnet scan + request + handle pending/denied/timeout/busy.
+Build/install debug APK on device, user test of Find PC + Allow; decide T5 (native Wi-Fi IP plugin).

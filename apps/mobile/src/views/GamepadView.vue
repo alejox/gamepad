@@ -4,6 +4,7 @@ import { computed } from "vue";
 import { tapFeedback } from "../adapters/haptics.js";
 import DPad from "../components/DPad.vue";
 import FaceLabel from "../components/FaceLabel.vue";
+import PadEmblem from "../components/PadEmblem.vue";
 import PadButton from "../components/PadButton.vue";
 import VirtualStick from "../components/VirtualStick.vue";
 import type { Vector } from "../domain/stick.js";
@@ -19,9 +20,22 @@ const settingsStore = useSettingsStore();
 const resetKey = computed(() => connection.releaseEpoch);
 const paired = computed(() => connection.status === "paired");
 const statusText = computed(() => {
+  if (connection.status === "awaiting") return "Waiting for approval…";
   if (connection.reconnecting) return "Reconnecting…";
   return connection.latencyMs === null ? "– ms" : `${connection.latencyMs} ms`;
 });
+
+const emblemLabel = computed(() => {
+  if (paired.value) return connection.hostName ? `Connected to ${connection.hostName}` : "Connected";
+  if (connection.status === "awaiting") return "Waiting for approval on the PC";
+  return "Find PC and connect";
+});
+
+/** Centre button: finds the PC again while not paired; inert while paired. */
+function onEmblem(): void {
+  if (paired.value || connection.status === "awaiting") return;
+  void connection.autoConnect();
+}
 
 function onButton(id: ButtonId, down: boolean): void {
   if (down && settingsStore.settings.haptics) tapFeedback();
@@ -61,17 +75,17 @@ const faces = ["y", "x", "b", "a"] as const;
         <span class="dot" :class="{ ok: paired }" :aria-label="paired ? 'Connected' : 'Not connected'" />
         <span class="latency">{{ statusText }}</span>
       </div>
-      <!-- Decorative centre emblem; only some skins show it. Not an input. -->
-      <div class="emblem" aria-hidden="true">
-        <svg viewBox="0 0 32 24">
-          <path
-            d="M9.5 5h13c3.8 0 6.2 2.8 7.2 7.6l.9 4.6c.6 3-2.4 4.6-4.4 2.6L22.6 16H9.4l-3.6 3.8c-2 2-5 .4-4.4-2.6l.9-4.6C3.3 7.8 5.7 5 9.5 5Z"
-          />
-          <path d="M8.5 9.4v5.2M5.9 12h5.2" />
-          <circle cx="22.2" cy="10.6" r="1.1" />
-          <circle cx="25.4" cy="13.4" r="1.1" />
-        </svg>
-      </div>
+      <!-- Centre "find PC" button; only some skins show it (others use the connect screen). -->
+      <button
+        type="button"
+        class="emblem"
+        :class="{ live: paired }"
+        :aria-label="emblemLabel"
+        :aria-disabled="paired || connection.status === 'awaiting'"
+        @click="onEmblem"
+      >
+        <PadEmblem />
+      </button>
       <div class="menu">
         <PadButton class="small" label="Select" :reset-key="resetKey" @change="onButton('select', $event)" />
         <PadButton class="small" label="Start" :reset-key="resetKey" @change="onButton('start', $event)" />
