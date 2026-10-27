@@ -61,6 +61,13 @@ const PAGE_SCRIPT = `
   };
   $("allow").addEventListener("click", () => decide("/approve"));
   $("deny").addEventListener("click", () => decide("/deny"));
+  const stop = $("stop");
+  stop.addEventListener("click", () => {
+    stop.disabled = true;
+    stop.textContent = "Stopping…";
+    // The server exits after answering; a network error here is expected.
+    fetch("/quit", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
+  });
   const server = $("server");
   const events = new EventSource("/events");
   events.onopen = () => { server.textContent = "Server started"; server.classList.remove("down"); };
@@ -167,6 +174,19 @@ export function renderHostStatusPage(snapshot: HostStatusSnapshot): string {
   .actions button.allow { background: var(--ok); border-color: var(--ok); color: #08130c; }
   .actions button:disabled { opacity: 0.6; cursor: default; }
   .error { color: var(--off); font-size: 13px; margin: 8px 0 0; min-height: 1em; }
+  .stop {
+    margin-top: 20px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--off) 40%, transparent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--off);
+    background: transparent;
+  }
+  .stop:disabled { opacity: 0.6; cursor: default; }
 </style>
 </head>
 <body>
@@ -191,6 +211,7 @@ export function renderHostStatusPage(snapshot: HostStatusSnapshot): string {
     <div><dt>Driver</dt><dd id="driver">${escapeHtml(snapshot.driver.name)}</dd></div>
     <div><dt>Gamepad</dt><dd class="status"><span class="dot${connected ? " on" : ""}" id="dot"></span><span id="controller">${escapeHtml(controllerText(snapshot))}</span></dd></div>
   </dl>
+  <button type="button" class="stop" id="stop">Stop server</button>
 </main>
 <script>${PAGE_SCRIPT}</script>
 </body>

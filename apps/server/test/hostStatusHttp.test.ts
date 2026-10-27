@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
 import { hostname } from "node:os";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type HostStatusSnapshot,
   createHostStatusHttp,
@@ -139,6 +139,65 @@ describe("public discovery endpoint", () => {
   });
 });
 
+describe("quit action", () => {
+  function quitRequest(
+    stop: (() => void) | undefined,
+    opts: { address?: string; host?: string; origin?: string; method?: string } = {},
+  ) {
+    const fake: FakeResponse = { status: undefined, headers: {}, body: "", ended: false };
+    const req = {
+      url: "/quit",
+      method: opts.method ?? "POST",
+      headers: {
+        host: opts.host ?? "localhost:7531",
+        origin: opts.origin ?? "http://localhost:7531",
+        "content-type": "application/json",
+      },
+      socket: { remoteAddress: opts.address ?? "127.0.0.1" },
+      on: () => req,
+      resume: () => {},
+    } as unknown as IncomingMessage;
+    const res = {
+      writeHead(status: number, headers: Record<string, string> = {}) {
+        fake.status = status;
+        fake.headers = headers;
+        return res;
+      },
+      write(chunk: string) {
+        fake.body += chunk;
+        return true;
+      },
+      end(chunk?: string) {
+        if (chunk) fake.body += chunk;
+        fake.ended = true;
+        return res;
+      },
+      on: () => res,
+    } as unknown as ServerResponse;
+    const options = stop === undefined ? { snapshot } : { snapshot, stop };
+    createHostStatusHttp(options).handle(req, res);
+    return fake;
+  }
+
+  it("stops and answers 204 for a trusted loopback POST", async () => {
+    const stop = vi.fn();
+    const res = quitRequest(stop);
+    expect(res.status).toBe(204);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers 409 when no stop handler is wired", () => {
+    expect(quitRequest(undefined).status).toBe(409);
+  });
+
+  it("stays loopback-only and rejects cross-site requests", () => {
+    expect(quitRequest(vi.fn(), { address: "192.168.1.50" }).status).toBe(403);
+    expect(quitRequest(vi.fn(), { origin: "http://evil.example" }).status).toBe(403);
+    expect(quitRequest(vi.fn(), { method: "GET" }).status).toBe(405);
+  });
+});
+
 describe("renderHostStatusPage", () => {
   it("renders the PIN, addresses and mode", () => {
     const html = renderHostStatusPage(snapshot());
@@ -172,6 +231,12 @@ describe("renderHostStatusPage", () => {
 
   it("hides the request card when nothing is pending", () => {
     expect(renderHostStatusPage(snapshot())).toMatch(/id="request"[^>]*hidden/);
+  });
+
+  it("renders a Stop button that posts /quit", () => {
+    const html = renderHostStatusPage(snapshot());
+    expect(html).toContain('id="stop"');
+    expect(html).toContain("/quit");
   });
 
   it("allows exactly the page script through a CSP hash", () => {

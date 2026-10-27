@@ -36,6 +36,8 @@ export interface HostStatusHttpOptions {
   snapshot: () => HostStatusSnapshot;
   /** Backs `POST /approve` and `POST /deny`; without it both answer 409. */
   approval?: PairingApproval;
+  /** Backs `POST /quit`; without it the action answers 409. */
+  stop?: () => void;
   /** Name announced by `/discover`; defaults to the OS host name. */
   hostName?: string;
 }
@@ -52,7 +54,7 @@ const DISCOVER_HEADERS = {
   "Access-Control-Max-Age": "600",
 };
 const PAGE_PATHS = new Set(["/", "/status", "/events"]);
-const ACTION_PATHS = new Set(["/approve", "/deny"]);
+const ACTION_PATHS = new Set(["/approve", "/deny", "/quit"]);
 
 /** True only for requests that originate on this machine. */
 export function isLoopbackAddress(address: string | undefined): boolean {
@@ -94,6 +96,7 @@ export function isTrustedAction(req: IncomingMessage): boolean {
 export function createHostStatusHttp({
   snapshot,
   approval,
+  stop,
   hostName = hostname(),
 }: HostStatusHttpOptions): HostStatusHttp {
   const streams = new Set<ServerResponse>();
@@ -138,6 +141,17 @@ export function createHostStatusHttp({
       return;
     }
     req.resume(); // The body carries nothing; drain it so the connection can be reused.
+    if (path === "/quit") {
+      if (!stop) {
+        plain(res, 409, "Stopping is unavailable\n");
+        return;
+      }
+      res.writeHead(204, NO_STORE);
+      res.end();
+      // Let the response flush before the host shuts down.
+      setImmediate(stop);
+      return;
+    }
     const done = path === "/approve" ? approval?.approve() : approval?.deny();
     if (!done) {
       plain(res, 409, "No pending connection request\n");

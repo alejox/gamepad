@@ -85,6 +85,7 @@ async function main(): Promise<void> {
       approve: () => server.approvePending(),
       deny: () => server.denyPending(),
     },
+    stop: () => void shutdown("quit"),
   });
   const server: WebSocketGamepadServer = new WebSocketGamepadServer({
     port: config.port,
