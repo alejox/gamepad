@@ -11,6 +11,7 @@
     "start": "tsx --conditions=source src/main.ts",
     "start:dry": "tsx --conditions=source src/main.ts --dry-run",
     "build": "tsc -p tsconfig.build.json",
+    "build:bundle": "node scripts/build-bundle.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@types/ws": "^8.18.2",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.15"
   }
 }

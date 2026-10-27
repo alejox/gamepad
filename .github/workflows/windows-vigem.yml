@@ -1,12 +1,15 @@
-# Builds ViGEmClient.dll from the archived upstream source (we never commit
-# binaries) and exercises the real koffi → ViGEmClient.dll path, which cannot
-# run on the macOS dev machine. Runners have no ViGEmBus kernel driver, so
-# the smoke test expects VIGEM_ERROR_BUS_NOT_FOUND. Not yet verified on a
-# runner: check the first run.
+# Builds ViGEmClient.dll from archived upstream source (we never commit
+# binaries), exercises the real native paths, and packages the complete Windows
+# host. Runners have no ViGEmBus kernel driver, so package smoke tests expect
+# the real ViGEm probe to fall back to keyboard/mouse.
 name: windows-vigem
 
 on:
   push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
     paths:
       - "apps/server/**"
       - "packages/shared/**"
@@ -17,14 +20,18 @@ on:
       - "apps/server/**"
       - "packages/shared/**"
       - "package-lock.json"
+      - ".github/workflows/windows-vigem.yml"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 env:
   # nefarius/ViGEmClient master HEAD (repo archived; 1.21.222.0 + later fixes).
   VIGEMCLIENT_SHA: b66d02d57e32cc8595369c53418b843e958649b4
 
 jobs:
-  vigem:
+  windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,3 +82,55 @@ jobs:
       - name: ViGEm smoke test
         working-directory: apps/server
         run: npx tsx --conditions=source scripts/vigem-smoke.ts
+
+      - name: Install Inno Setup
+        run: choco install innosetup --version 6.4.0 --no-progress --yes
+
+      - name: Build installer and portable package
+        working-directory: apps/server
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF -like "refs/tags/v*") { $version = $env:GITHUB_REF_NAME.Substring(1) }
+          & scripts/package-windows.ps1 -Version $version
+          if ($LASTEXITCODE -ne 0) { throw "Windows packaging failed" }
+
+      - name: Smoke test portable package
+        working-directory: apps/server
+        run: python scripts/windows-package-smoke.py dist/windows/AlejoxGamepad
+
+      - name: Smoke test installed package and uninstaller
+        working-directory: apps/server
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF -like "refs/tags/v*") { $version = $env:GITHUB_REF_NAME.Substring(1) }
+          $setup = Resolve-Path "dist/artifacts/AlejoxGamepad-Setup-$version.exe"
+          & $setup /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /TASKS=""
+          if ($LASTEXITCODE -ne 0) { throw "Silent install failed: $LASTEXITCODE" }
+          $installed = "$env:ProgramFiles/AlejoxGamepad"
+          python scripts/windows-package-smoke.py $installed
+          if ($LASTEXITCODE -ne 0) { throw "Installed package smoke failed" }
+          $uninstaller = Get-ChildItem "$installed/unins*.exe" | Select-Object -First 1
+          if (-not $uninstaller) { throw "Uninstaller not found" }
+          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+          if ($LASTEXITCODE -ne 0) { throw "Silent uninstall failed: $LASTEXITCODE" }
+          if (Test-Path "$installed/AlejoxGamepad.exe") { throw "Uninstaller left the application executable behind" }
+
+      - name: Upload Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlejoxGamepad-Windows
+          path: |
+            apps/server/dist/artifacts/AlejoxGamepad-Setup-*.exe
+            apps/server/dist/artifacts/AlejoxGamepad-Portable-*.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            apps/server/dist/artifacts/AlejoxGamepad-Setup-*.exe
+            apps/server/dist/artifacts/AlejoxGamepad-Portable-*.zip
+          generate_release_notes: true
