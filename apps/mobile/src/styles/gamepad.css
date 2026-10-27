@@ -255,6 +255,11 @@
   background: #3ddc84;
   box-shadow: 0 0 6px #3ddc84;
 }
+/* Decorative emblem, hidden unless a skin opts in. */
+.emblem {
+  display: none;
+  pointer-events: none;
+}
 .menu,
 .tools {
   display: flex;

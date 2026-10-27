@@ -7,7 +7,7 @@ describe("parseStoredSettings", () => {
     expect(parseStoredSettings(null)).toEqual(defaultSettings());
     expect(parseStoredSettings("{oops")).toEqual(defaultSettings());
     expect(defaultSettings()).toMatchObject({
-      skin: "neon",
+      skin: "pro",
       haptics: true,
       mouseSensitivity: 1200,
       mapping: DEFAULT_MAPPING,
@@ -32,8 +32,8 @@ describe("parseStoredSettings", () => {
     expect(restored).toEqual(defaultSettings());
   });
 
-  it("offers five skins with neon first", () => {
-    expect(SKINS.map((skin) => skin.id)).toEqual(["neon", "retro8", "retro16", "green", "geo"]);
+  it("offers six skins with pro first", () => {
+    expect(SKINS.map((skin) => skin.id)).toEqual(["pro", "neon", "retro8", "retro16", "green", "geo"]);
   });
 });
 

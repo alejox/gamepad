@@ -1,6 +1,7 @@
 import { DEFAULT_MAPPING, type KeyMapping, MOUSE_SENSITIVITY_RANGE, parseMapping } from "@gamepad/shared";
 
 export const SKINS = [
+  { id: "pro", name: "Pro", description: "Matte dotted black body, blue neon edge, colored face letters" },
   { id: "neon", name: "Neon", description: "Carbon body, glossy black buttons, blue glow" },
   { id: "retro8", name: "Retro 8-bit", description: "Light grey body, black d-pad, red round buttons" },
   { id: "retro16", name: "Retro 16-bit", description: "Rounded grey body, four colored face buttons" },
@@ -34,7 +35,7 @@ export function cloneMapping(mapping: KeyMapping): KeyMapping {
 
 export function defaultSettings(): Settings {
   return {
-    skin: "neon",
+    skin: "pro",
     haptics: true,
     stickDeadzone: 0.08,
     mouseSensitivity: 1200,

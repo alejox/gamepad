@@ -47,7 +47,7 @@ phone browser (dev loop) and in the APK WebView without native code. Tradeoff:
 - [x] T1 Status page served over HTTP on the WS port, loopback-only, live status, dev script fix, tests — route: delegated (2+ non-trivial files: WebSocketGamepadServer, new HTTP/status adapter, main.ts, tests)
 - [ ] T2 Server: public `GET /discover` (CORS, host name + protocol version, no PIN); protocol message to request approval without PIN; pending-approval state; Allow/Deny on the host page (loopback-only actions); tests — route: delegated (shared protocol + server + page)
 - [ ] T3 Mobile: central gamepad button / Connect screen action scans the /24 subnet for `/discover`, connects, shows "waiting for approval on PC", handles deny/timeout; tests — route: delegated (mobile stores/adapters/views)
-- [ ] T4 Mobile: new "Pro" skin (matte black dotted body, blue neon edge outline, L2/L1/R1/R2 top tabs, recessed sticks, dark round face buttons with colored letters Y green / X purple / B red / A blue, glowing central button). Original artwork only — no third-party logos or names — route: delegated (apps/mobile/src/domain/settings.ts, src/styles/skins.css, gamepad view markup if needed)
+- [x] T4 Mobile: new "Pro" skin (matte black dotted body, blue neon edge outline, L2/L1/R1/R2 top tabs, recessed sticks, dark round face buttons with colored letters Y green / X purple / B red / A blue, glowing central button). Original artwork only — no third-party logos or names — route: delegated (apps/mobile/src/domain/settings.ts, src/styles/skins.css, gamepad view markup if needed)
 
 ## Acceptance criteria
 
@@ -61,7 +61,8 @@ phone browser (dev loop) and in the APK WebView without native code. Tradeoff:
 ## Progress / Evidence
 
 T1 (2026-10-26): server tests 79/79 pass, typecheck clean (writer); parent spot check: tests 79/79, `curl localhost:7531/` → 200, `/status` JSON ok, LAN IP → 403. Extra: Host-header check against DNS rebinding.
+T4 (2026-10-26): mobile tests 34/34, typecheck clean (writer); parent spot check tests 34/34. "pro" is now default skin; decorative center emblem (protocol has no home button id — T3 may turn it into the connect button). Visual check pending on device.
 
 ## Next step
 
-T4 or T2/T3 (user choosing order).
+User visual check of Pro skin, then T2/T3.

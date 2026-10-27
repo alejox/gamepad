@@ -61,6 +61,17 @@ const faces = ["y", "x", "b", "a"] as const;
         <span class="dot" :class="{ ok: paired }" :aria-label="paired ? 'Connected' : 'Not connected'" />
         <span class="latency">{{ statusText }}</span>
       </div>
+      <!-- Decorative centre emblem; only some skins show it. Not an input. -->
+      <div class="emblem" aria-hidden="true">
+        <svg viewBox="0 0 32 24">
+          <path
+            d="M9.5 5h13c3.8 0 6.2 2.8 7.2 7.6l.9 4.6c.6 3-2.4 4.6-4.4 2.6L22.6 16H9.4l-3.6 3.8c-2 2-5 .4-4.4-2.6l.9-4.6C3.3 7.8 5.7 5 9.5 5Z"
+          />
+          <path d="M8.5 9.4v5.2M5.9 12h5.2" />
+          <circle cx="22.2" cy="10.6" r="1.1" />
+          <circle cx="25.4" cy="13.4" r="1.1" />
+        </svg>
+      </div>
       <div class="menu">
         <PadButton class="small" label="Select" :reset-key="resetKey" @change="onButton('select', $event)" />
         <PadButton class="small" label="Start" :reset-key="resetKey" @change="onButton('start', $event)" />

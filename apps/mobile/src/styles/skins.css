@@ -1,6 +1,7 @@
 /*
  * Skins are sets of CSS custom properties selected by [data-skin] on <html>.
  * Components only read variables; they never know which skin is active.
+ * A skin may add scoped rules for shapes variables cannot express (see "pro").
  * The base block is the "neon" skin and is re-declared on every [data-skin]
  * element, so previews nested in another skin get a complete variable set.
  */
@@ -183,4 +184,206 @@
   --stick-base-border: 1px solid #2f2f35;
   --knob-bg: radial-gradient(circle at 40% 35%, #333338, #121214);
   --knob-border: 1px solid #3a3a40;
+}
+
+/*
+ * "Pro": modern console-style pad. Variables cover colors; the scoped rules
+ * below add the parts variables cannot express (texture, neon outline,
+ * angled shoulder tabs, recessed wells, centre emblem). They only target the
+ * live pad, so Settings previews keep using the variables alone.
+ */
+[data-skin="pro"] {
+  --pro-glow: #3d8bff;
+  --pad-bg: radial-gradient(ellipse at 50% 30%, #17191e 0%, #0b0c0f 70%, #060708 100%);
+  --pad-fg: #a9aeb8;
+  --accent: #3d8bff;
+  --font-label: "Bahnschrift", "DIN Alternate", "Arial Narrow", system-ui, sans-serif;
+
+  --btn-bg: radial-gradient(circle at 38% 28%, #3b3e46 0%, #16171b 48%, #050506 100%);
+  --btn-border: 1px solid #000;
+  --btn-shadow: 0 3px 6px rgb(0 0 0 / 75%), inset 0 1px 1px rgb(255 255 255 / 22%),
+    inset 0 -2px 4px rgb(0 0 0 / 60%);
+  --btn-fg: #c9cdd4;
+  --face-y-fg: #2ee6a6;
+  --face-x-fg: #9b6cff;
+  --face-b-fg: #ff3b2f;
+  --face-a-fg: #3d8bff;
+
+  --dpad-bg: linear-gradient(160deg, #23252b, #0b0c0e);
+  --dpad-fg: #c4c8d0;
+  --dpad-border: 1px solid #000;
+  --dpad-radius: 6px;
+
+  --shoulder-bg: linear-gradient(180deg, #202227 0%, #0d0e11 100%);
+  --shoulder-fg: #b9bec8;
+  --shoulder-border: 0;
+  --shoulder-radius: 6px;
+
+  --small-bg: linear-gradient(180deg, #1d1f24, #0b0c0e);
+  --small-fg: #a9aeb8;
+  --small-border: 1px solid #000;
+
+  --stick-base-bg: radial-gradient(circle at 50% 45%, #040405 0%, #0b0c0e 55%, #191b20 78%, #2a2d34 92%, #0a0b0d 100%);
+  --stick-base-border: 2px solid #050506;
+  --knob-bg: radial-gradient(circle at 50% 50%, #111216 0%, #1a1c21 42%, #2b2e36 68%, #3b3f49 82%, #16181c 100%);
+  --knob-border: 1px solid #000;
+}
+
+/* Body: dotted texture fading in towards the grips, plus a neon outline. */
+[data-skin="pro"] .gamepad {
+  position: relative;
+  isolation: isolate;
+}
+[data-skin="pro"] .gamepad::before,
+[data-skin="pro"] .gamepad::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+[data-skin="pro"] .gamepad::before {
+  background: radial-gradient(circle, rgb(255 255 255 / 9%) 0 0.7px, transparent 1.3px) 0 0 / 7px 7px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 40%, #000 82%);
+  mask-image: linear-gradient(to bottom, transparent 40%, #000 82%);
+}
+[data-skin="pro"] .gamepad::after {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M33 0C33.5 30 37 50 43 52H57C63 50 66.5 30 67 0Z' fill='%23ffffff' fill-opacity='0.025'/%3E%3Cg fill='none' stroke='%233d8bff' stroke-width='1.6' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath vector-effect='non-scaling-stroke' d='M33 0.6C33.5 30 37 50 43 52H57C63 50 66.5 30 67 0.6'/%3E%3Cpath vector-effect='non-scaling-stroke' d='M0.8 28C0.8 60 2.5 86 9 95C12 98.6 16 98.8 22 98.8H38C44 98.8 46 97.6 50 97.6'/%3E%3Cpath vector-effect='non-scaling-stroke' d='M99.2 28C99.2 60 97.5 86 91 95C88 98.6 84 98.8 78 98.8H62C56 98.8 54 97.6 50 97.6'/%3E%3C/g%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 2px var(--pro-glow)) drop-shadow(0 0 7px rgb(61 139 255 / 55%));
+}
+[data-skin="pro"] .side,
+[data-skin="pro"] .center {
+  position: relative;
+  z-index: 1;
+}
+
+/* Shoulders: angled tabs hanging from the top edge. */
+[data-skin="pro"] .shoulder {
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%), inset 0 -2px 0 rgb(61 139 255 / 35%);
+}
+[data-skin="pro"] .left .trigger {
+  clip-path: polygon(0 0, 100% 0, 94% 100%, 16% 100%);
+}
+[data-skin="pro"] .left .bumper {
+  clip-path: polygon(0 0, 100% 0, 88% 100%, 6% 100%);
+}
+[data-skin="pro"] .right .bumper {
+  clip-path: polygon(0 0, 100% 0, 94% 100%, 12% 100%);
+}
+[data-skin="pro"] .right .trigger {
+  clip-path: polygon(0 0, 100% 0, 84% 100%, 6% 100%);
+}
+[data-skin="pro"] .shoulder.pressed {
+  filter: none;
+  color: #dbe8ff;
+  box-shadow: inset 0 0 0 1px var(--pro-glow), inset 0 -6px 14px rgb(61 139 255 / 50%);
+}
+
+/* D-pad: dark cross sitting in a circular well. */
+[data-skin="pro"] .dpad {
+  isolation: isolate;
+}
+[data-skin="pro"] .dpad::before {
+  content: "";
+  position: absolute;
+  inset: -6%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, #060607 0%, #0d0e11 70%, #17191d 100%);
+  box-shadow: inset 0 4px 12px rgb(0 0 0 / 85%), inset 0 -1px 2px rgb(255 255 255 / 7%), 0 1px 0 rgb(255 255 255 / 6%);
+}
+[data-skin="pro"] .dpad-arm {
+  font-size: 2.8vmin;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
+}
+[data-skin="pro"] .dpad-arm.pressed {
+  filter: none;
+  color: #9cc6ff;
+  box-shadow: inset 0 0 12px rgb(61 139 255 / 65%);
+}
+
+/* Face buttons: glossy black caps with glowing colored letters. */
+[data-skin="pro"] .face {
+  font-weight: 800;
+  text-shadow: 0 0 6px currentColor;
+}
+[data-skin="pro"] .face.pressed {
+  box-shadow: inset 0 0 14px currentColor, 0 0 10px currentColor;
+}
+
+/* Sticks: deep bowl and a concave cap with four grip dimples. */
+[data-skin="pro"] .stick {
+  box-shadow: inset 0 6px 16px rgb(0 0 0 / 90%), inset 0 -2px 4px rgb(255 255 255 / 6%), 0 1px 0 rgb(255 255 255 / 7%);
+}
+[data-skin="pro"] .stick-knob {
+  position: relative;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 80%), inset 0 1px 1px rgb(255 255 255 / 14%);
+}
+[data-skin="pro"] .stick-knob::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 26%, rgb(0 0 0 / 75%) 0 0.6vmin, transparent 0.9vmin),
+    radial-gradient(circle at 50% 74%, rgb(0 0 0 / 75%) 0 0.6vmin, transparent 0.9vmin),
+    radial-gradient(circle at 26% 50%, rgb(0 0 0 / 75%) 0 0.6vmin, transparent 0.9vmin),
+    radial-gradient(circle at 74% 50%, rgb(0 0 0 / 75%) 0 0.6vmin, transparent 0.9vmin);
+}
+[data-skin="pro"] .stick.active .stick-knob {
+  filter: none;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 80%), 0 0 0 1px var(--pro-glow), 0 0 12px rgb(61 139 255 / 60%);
+}
+
+/* SELECT / START: slim dark pills with their labels printed above. */
+[data-skin="pro"] .menu {
+  gap: 4vmin;
+  padding-top: 3.4vmin;
+}
+[data-skin="pro"] .menu .small {
+  position: relative;
+  min-width: 11vmin;
+  height: 4.6vmin;
+  font-size: 0;
+}
+[data-skin="pro"] .menu .small::before {
+  content: attr(aria-label);
+  position: absolute;
+  bottom: calc(100% + 0.8vmin);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2.4vmin;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--small-fg);
+}
+[data-skin="pro"] .small.pressed {
+  filter: none;
+  box-shadow: inset 0 0 8px rgb(61 139 255 / 70%);
+}
+
+/* Centre emblem: glowing round plate with an original pad glyph. */
+[data-skin="pro"] .emblem {
+  display: grid;
+  place-items: center;
+  width: 15vmin;
+  height: 15vmin;
+  border-radius: 50%;
+  color: #9cc6ff;
+  background: radial-gradient(circle at 50% 40%, #1d2028 0%, #0b0c0f 70%);
+  border: 2px solid var(--pro-glow);
+  box-shadow: 0 0 14px rgb(61 139 255 / 65%), inset 0 0 12px rgb(61 139 255 / 35%);
+}
+[data-skin="pro"] .emblem svg {
+  width: 62%;
+  height: 62%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px rgb(61 139 255 / 80%));
 }
