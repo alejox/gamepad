@@ -7,3 +7,6 @@ coverage/
 
 # Locally built APKs
 dist-apk/
+
+# Native binaries are built by CI, never committed
+apps/server/native/

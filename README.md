@@ -85,8 +85,9 @@ one with `--driver=<mode>` (after `--` when using npm) or `GAMEPAD_DRIVER`:
   entitlement.
 - **Linux** creates a virtual Xbox 360 pad through `/dev/uinput`; it needs the
   `uinput` module and write access. See [docs/linux-gamepad.md](docs/linux-gamepad.md).
-- **Windows** (ViGEmBus) backend is coming; until then `auto` falls back to
-  keyboard/mouse.
+- **Windows** creates a virtual Xbox 360 (XInput) pad through ViGEmBus; it
+  needs the ViGEmBus 1.22.0 driver and `ViGEmClient.dll` (built by CI). See
+  [docs/windows-gamepad.md](docs/windows-gamepad.md).
 
 ### macOS: grant Accessibility permission
 

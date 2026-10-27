@@ -1,0 +1,77 @@
+# Builds ViGEmClient.dll from the archived upstream source (we never commit
+# binaries) and exercises the real koffi → ViGEmClient.dll path, which cannot
+# run on the macOS dev machine. Runners have no ViGEmBus kernel driver, so
+# the smoke test expects VIGEM_ERROR_BUS_NOT_FOUND. Not yet verified on a
+# runner: check the first run.
+name: windows-vigem
+
+on:
+  push:
+    paths:
+      - "apps/server/**"
+      - "packages/shared/**"
+      - "package-lock.json"
+      - ".github/workflows/windows-vigem.yml"
+  pull_request:
+    paths:
+      - "apps/server/**"
+      - "packages/shared/**"
+      - "package-lock.json"
+  workflow_dispatch:
+
+env:
+  # nefarius/ViGEmClient master HEAD (repo archived; 1.21.222.0 + later fixes).
+  VIGEMCLIENT_SHA: b66d02d57e32cc8595369c53418b843e958649b4
+
+jobs:
+  vigem:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout ViGEmClient
+        uses: actions/checkout@v4
+        with:
+          repository: nefarius/ViGEmClient
+          ref: ${{ env.VIGEMCLIENT_SHA }}
+          path: vigemclient
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # Release_DLL defines VIGEM_DYNAMIC + VIGEM_EXPORTS (src/ViGEmClient.vcxproj)
+      # so the functions are exported, and links the CRT statically (/MT).
+      # CMake's ViGEmClient_DLL option does not define them, so its DLL would
+      # export nothing. The project targets v142; the runner ships v143.
+      - name: Build ViGEmClient.dll (Release_DLL x64)
+        working-directory: vigemclient
+        run: msbuild src\ViGEmClient.vcxproj /m /p:Configuration=Release_DLL /p:Platform=x64 /p:PlatformToolset=v143
+
+      - name: Check exports and stage the DLL
+        shell: pwsh
+        run: |
+          $dll = "vigemclient\bin\release\x64\ViGEmClient.dll"
+          $exports = dumpbin /exports $dll | Out-String
+          foreach ($fn in "vigem_alloc","vigem_free","vigem_connect","vigem_disconnect","vigem_target_x360_alloc","vigem_target_free","vigem_target_add","vigem_target_remove","vigem_target_x360_update") {
+            if ($exports -notmatch "\b$fn\b") { throw "missing export: $fn" }
+          }
+          New-Item -ItemType Directory -Force apps\server\native\win32-x64 | Out-Null
+          Copy-Item $dll apps\server\native\win32-x64\ViGEmClient.dll
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ViGEmClient-win32-x64
+          path: apps/server/native/win32-x64/ViGEmClient.dll
+          if-no-files-found: error
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Server unit tests
+        run: npm run test -w @gamepad/server
+      - name: ViGEm smoke test
+        working-directory: apps/server
+        run: npx tsx --conditions=source scripts/vigem-smoke.ts
