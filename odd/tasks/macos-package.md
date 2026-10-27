@@ -61,10 +61,9 @@ Local verification on macOS arm64 with Node v26.10.0:
 - `npm run build:bundle -w @gamepad/server`: passed.
 - `npm run package:macos -w @gamepad/server`: built the native arm64 launcher,
   downloaded and checksum-verified the official Node v26.10.0 arm64 runtime,
-  generated the icon from the existing Android asset, and produced
-  `AlejoxGamepad-0.1.0-macOS-arm64.dmg` (47 MB) and
-  `AlejoxGamepad-Portable-0.1.0-macOS-arm64.zip` (44 MB). `hdiutil verify`
-  returned `VALID`.
+  generated the icon from the existing Android asset, and produced the DMG and
+  portable app zip. The final 0.2.0 DMG (46 MB) and zip (44 MB) were rebuilt and
+  smoke-tested after the version bump; `hdiutil verify` returned `VALID`.
 - `lipo -archs` returned `arm64` for the launcher, Node, robotjs and koffi.
   `otool -L` on the bundled Node showed only `/System/Library` and `/usr/lib`
   dependencies. `vtool -show-build` reported Node `minos 13.5`; packaging copies
@@ -79,17 +78,17 @@ Local verification on macOS arm64 with Node v26.10.0:
 - The same smoke passed for the app mounted read-only from the DMG and for the
   app extracted from the portable zip. The DMG's Applications symlink was also
   checked.
+- Hosted macOS CI run 40449583192 passed: npm ci, server tests, package build,
+  real app smoke on the contractual default port 7531 and artifact upload.
 
-The first default-port smoke stopped at its PIN assertion because an existing
-source server (PID 85478) already owned port 7531. It was left untouched; local
-package smokes therefore used 17531. CI uses the contractual default 7531 on a
-clean runner. CI execution, the manual Gatekeeper flow and real input after the
-user grants Accessibility remain unverified; no permission or security setting
-was changed.
+The first default-port local smoke stopped at its PIN assertion because an
+existing source server already owned port 7531. It was left untouched; local
+package smokes therefore used 17531. The manual Gatekeeper flow and real input
+after the user grants Accessibility remain unverified; no permission or security
+setting was changed.
 
 ## Next step
 
-Run `.github/workflows/macos-package.yml` on the hosted arm64 runner. On a `v*`
-tag it uploads the DMG and portable zip to the same GitHub Release as the
-Windows assets. Perform the manual Gatekeeper and post-Accessibility input check
-before announcing the release.
+Publish v0.2.0 so the same GitHub Release contains the macOS and Windows assets.
+Then perform the manual Gatekeeper and post-Accessibility input check on the
+user's Mac.
