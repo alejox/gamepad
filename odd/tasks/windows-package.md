@@ -41,7 +41,7 @@ Out of scope: code signing (SmartScreen warning expected), macOS/Linux packages.
 ## Tasks
 
 - [x] W1 Remove custom photo skin (user request) — route: inline (`git revert` of e8935f5 → 781f3ac); mobile 70/70, typecheck clean. APK rebuilt; install pending (phone disconnected).
-- [ ] W2 Windows bundle + exe + installer + CI workflow + docs — implemented; first Windows CI run pending
+- [x] W2 Windows bundle + exe + installer + CI workflow + docs — validated by Windows CI run 40446096708
 - [ ] W3 User installs on Windows PC and checks host page + joy.cpl — user
 
 ## Acceptance criteria
@@ -65,13 +65,15 @@ Out of scope: code signing (SmartScreen warning expected), macOS/Linux packages.
   `npm run build:bundle -w @gamepad/server`. The built bundle served `/status`
   and `/`, reported the expected macOS keyboard driver in dry-run, and exited
   cleanly with code 0 on SIGTERM. Workflow YAML and smoke Python syntax parsed.
-- Not yet verified: Windows launcher/Inno compilation, real portable and Program
-  Files smoke runs, installer firewall/task behavior, artifacts and Release.
-  These require the first `windows-vigem` run on `windows-latest`; macOS cannot
-  validate them. W2 remains unchecked until that evidence exists.
+- Windows CI run 40446096708 passed on `windows-latest`: launcher and Inno
+  compilation, real portable and Program Files smoke runs, clean shutdown,
+  silent uninstall and upload of both Windows packages. CI fixes: a9a7327 and
+  29d9f11. The runner has no ViGEmBus kernel driver, so both smokes verify the
+  expected keyboard/mouse fallback; the real virtual pad remains W3.
+- Release publishing is implemented for `v*` tags and will be exercised by the
+  v0.1.0 release after integration into `main`.
 
 ## Next step
 
-Run `windows-vigem` on Windows CI and inspect its logs/artifacts. After a green
-run, mark W2 complete and give the user the Setup exe for W3 (`joy.cpl` and the
-host page on the final Windows PC).
+Install `AlejoxGamepad-Setup-0.1.0.exe` on the user's Windows PC and complete W3:
+check the host page, `joy.cpl` and input from the phone.
