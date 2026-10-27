@@ -106,15 +106,15 @@ jobs:
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           if ($env:GITHUB_REF -like "refs/tags/v*") { $version = $env:GITHUB_REF_NAME.Substring(1) }
           $setup = Resolve-Path "dist/artifacts/AlejoxGamepad-Setup-$version.exe"
-          & $setup /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /TASKS=""
-          if ($LASTEXITCODE -ne 0) { throw "Silent install failed: $LASTEXITCODE" }
+          $install = Start-Process -FilePath $setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", '/TASKS=""' -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Silent install failed: $($install.ExitCode)" }
           $installed = "$env:ProgramFiles/AlejoxGamepad"
           python scripts/windows-package-smoke.py $installed
           if ($LASTEXITCODE -ne 0) { throw "Installed package smoke failed" }
           $uninstaller = Get-ChildItem "$installed/unins*.exe" | Select-Object -First 1
           if (-not $uninstaller) { throw "Uninstaller not found" }
-          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
-          if ($LASTEXITCODE -ne 0) { throw "Silent uninstall failed: $LASTEXITCODE" }
+          $uninstall = Start-Process -FilePath $uninstaller.FullName -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Silent uninstall failed: $($uninstall.ExitCode)" }
           if (Test-Path "$installed/AlejoxGamepad.exe") { throw "Uninstaller left the application executable behind" }
 
       - name: Upload Windows packages
