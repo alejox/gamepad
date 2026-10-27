@@ -36,7 +36,7 @@ into 4 digital keys. XInput is the most widely supported controller API on PC.
 - [x] V1 Mobile "Shapes" skin — route: delegated (mobile skin CSS/settings/components)
 - [x] V2 Research (2026-10-26): ViGEmBus v1.22.0 retired/archived but installable; `vigemclient` npm has no prebuilds (needs MSVC); npm `uinput` dead; koffi 3.3.4 N-API prebuilds win/linux/darwin → single FFI route. macOS virtual HID needs DriverKit entitlement → keep robotjs. Protocol: sticks analog [-1,1] y-down; L2/R2 digital; no guide button.
 - [x] V3 Server domain: `GamepadDriver` port (setButton/setStick/setTrigger/flush), protocol→pad-state mapper (Y inversion, triggers 0/255), driver selection by platform + capability probe with robotjs fallback, `--driver` flag/env; tests — route: delegated
-- [ ] V4 Linux adapter: koffi → libc open/ioctl/write on /dev/uinput as Xbox 360 (045e:028e), pure struct/ioctl encoders tested on Mac, fake-binding adapter tests; udev rule docs — route: delegated
+- [x] V4 Linux adapter: koffi → libc open/ioctl/write on /dev/uinput as Xbox 360 (045e:028e), pure struct/ioctl encoders tested on Mac, fake-binding adapter tests; udev rule docs — route: delegated
 - [ ] V5 Windows adapter: koffi → ViGEmClient.dll X360 target (XUSB_REPORT), fake-binding tests; DLL built by GitHub Actions windows runner (user chose CI; repo github.com/alejox/gamepad, pushed 2026-10-26); ViGEmBus install docs; fallback when bus missing — route: delegated
 - [ ] V6 Real-hardware validation on user's Windows PC (and Linux if available) — user
 
@@ -49,7 +49,8 @@ into 4 digital keys. XInput is the most widely supported controller API on PC.
 
 V1 (2026-10-26): mobile 69/69, typecheck clean (writer); parent spot check 69/69. Shapes skin reuses geo glyph mechanism via usesFaceGlyphs(). Visual check pending on device.
 V3 (2026-10-26): server 165/165, typecheck clean (writer); parent spot check 165/165, live /status shows driver. PadState (dpad as buttons), GamepadDriver {name,update,close}, selectDriver matrix, probes registry apps/server/src/adapters/gamepadProbes.ts (empty until V4/V5).
+V4 (2026-10-26): server 201/201, typecheck clean, koffi 3.3.4 loads on Mac (writer); parent spot check 201/201. Real koffi→libc→/dev/uinput path unverified: needs CI workflow linux-uinput-smoke.yml or a Linux machine.
 
 ## Next step
 
-V4 Linux uinput adapter, then V5 Windows ViGEm adapter + CI DLL build.
+Check Linux CI smoke run; V5 Windows ViGEm adapter + CI DLL build.

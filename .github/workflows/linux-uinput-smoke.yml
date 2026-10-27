@@ -1,0 +1,37 @@
+# Exercises the real uinput path (koffi → libc → /dev/uinput), which cannot run
+# on the macOS dev machine. Not yet verified on a runner: check the first run.
+name: linux-uinput-smoke
+
+on:
+  push:
+    paths:
+      - "apps/server/**"
+      - "packages/shared/**"
+      - "package-lock.json"
+      - ".github/workflows/linux-uinput-smoke.yml"
+  pull_request:
+    paths:
+      - "apps/server/**"
+      - "packages/shared/**"
+      - "package-lock.json"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Enable uinput
+        run: |
+          sudo modprobe uinput
+          sudo chmod 666 /dev/uinput
+      - name: Server unit tests
+        run: npm run test -w @gamepad/server
+      - name: uinput smoke test
+        working-directory: apps/server
+        run: npx tsx --conditions=source scripts/uinput-smoke.ts

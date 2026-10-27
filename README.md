@@ -83,8 +83,10 @@ one with `--driver=<mode>` (after `--` when using npm) or `GAMEPAD_DRIVER`:
 - `--dry-run --driver=gamepad` logs pad state instead of creating a device.
 - **macOS** always uses keyboard/mouse: virtual HID devices need a DriverKit
   entitlement.
-- **Windows** (ViGEmBus) and **Linux** (uinput) backends are coming; until then
-  `auto` falls back to keyboard/mouse.
+- **Linux** creates a virtual Xbox 360 pad through `/dev/uinput`; it needs the
+  `uinput` module and write access. See [docs/linux-gamepad.md](docs/linux-gamepad.md).
+- **Windows** (ViGEmBus) backend is coming; until then `auto` falls back to
+  keyboard/mouse.
 
 ### macOS: grant Accessibility permission
 
