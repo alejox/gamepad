@@ -39,6 +39,11 @@ describe("parseConfig", () => {
     expect(parseConfig(["--dry-run"], {}).dryRun).toBe(true);
   });
 
+  it("opens the browser by default and accepts --no-open", () => {
+    expect(parseConfig([], {}).open).toBe(true);
+    expect(parseConfig(["--no-open"], {}).open).toBe(false);
+  });
+
   it.each([
     ["non-numeric port", { GAMEPAD_PORT: "abc" }],
     ["out-of-range port", { GAMEPAD_PORT: "70000" }],

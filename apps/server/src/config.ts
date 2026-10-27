@@ -11,9 +11,10 @@ export interface ServerConfig {
   dryRun: boolean;
   sensitivity: number;
   driver: DriverRequest;
+  open: boolean;
 }
 
-const KNOWN_FLAGS = new Set(["--dry-run"]);
+const KNOWN_FLAGS = new Set(["--dry-run", "--no-open"]);
 const DRIVER_FLAG = "--driver=";
 
 function parsePort(value: string | undefined): number {
@@ -54,6 +55,7 @@ export function parseConfig(argv: readonly string[], env: Readonly<Record<string
     port: parsePort(env.GAMEPAD_PORT),
     pin: parsePin(env.GAMEPAD_PIN),
     dryRun: argv.includes("--dry-run"),
+    open: !argv.includes("--no-open"),
     sensitivity: parseSensitivity(env.GAMEPAD_SENSITIVITY),
     // The flag wins over the environment; the last flag wins over earlier ones.
     driver: parseDriver(

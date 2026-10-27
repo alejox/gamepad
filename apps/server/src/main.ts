@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { WebSocketGamepadServer } from "./adapters/WebSocketGamepadServer.js";
+import { createBrowserOpener, shouldOpenBrowser } from "./adapters/browserOpener.js";
 import { NATIVE_GAMEPAD_PROBES } from "./adapters/gamepadProbes.js";
 import { type HostDriver, createHostStatusHttp } from "./adapters/hostStatusHttp.js";
 import { LoggingGamepadDriver } from "./adapters/LoggingGamepadDriver.js";
@@ -95,6 +96,9 @@ async function main(): Promise<void> {
   });
   port = await server.start();
   printBanner(config, port, driverInfo);
+  if (shouldOpenBrowser({ packaged: process.env.GAMEPAD_PACKAGED === "1", open: config.open, platform: process.platform })) {
+    createBrowserOpener()(`http://localhost:${port}/`);
+  }
 
   let stopping = false;
   const shutdown = async (signal: string): Promise<void> => {
