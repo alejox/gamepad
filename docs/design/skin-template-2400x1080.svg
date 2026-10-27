@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Alejox Gamepad skin template — landscape phone, 2400 x 1080 px (20:9).
+  1 vmin = 1% of the screen height = 10.8 px on this canvas.
+
+  Geometry source: apps/mobile/src/styles/gamepad.css (grid layout).
+  - "exact": computed from the CSS sizes (vmin) and grid placement.
+  - "approx": centre column measured from a live screenshot; its width is
+    "auto" in CSS and depends on content (about 26 vmin).
+
+  Hide or delete the "guides" layer before exporting artwork.
+  Deliver the body background and each control as separate SVG/PNG
+  (PNG at 2x the sizes below, transparent background), plus pressed states.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1080" viewBox="0 0 2400 1080"
+     font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <style>
+      .zone   { fill: rgba(80, 140, 255, 0.10); stroke: #4f8cff; stroke-width: 3; }
+      .approx { fill: rgba(255, 170, 60, 0.10); stroke: #ff9a2e; stroke-width: 3; stroke-dasharray: 12 8; }
+      .guide  { fill: none; stroke: #8a8f99; stroke-width: 2; stroke-dasharray: 10 10; }
+      .label  { fill: #e8ecf3; font-size: 26px; font-weight: 700; text-anchor: middle; }
+      .dim    { fill: #9aa3b2; font-size: 20px; text-anchor: middle; }
+      .note   { fill: #9aa3b2; font-size: 22px; }
+    </style>
+  </defs>
+
+  <!-- Artwork goes here: replace this rect with your body background. -->
+  <g id="artwork-background">
+    <rect width="2400" height="1080" fill="#14161b"/>
+  </g>
+
+  <g id="guides">
+    <!-- Safe area: 3 vmin top/bottom, 4 vmin left/right. Keep controls inside. -->
+    <rect class="guide" x="43.2" y="32.4" width="2313.6" height="1015.2"/>
+    <text class="note" x="56" y="1070">Safe area (3 vmin top/bottom, 4 vmin sides) · 1 vmin = 10.8 px</text>
+
+    <!-- Columns: left 1fr | centre auto (~26 vmin) | right 1fr, gap 2 vmin. -->
+    <rect class="guide" x="43.2" y="32.4" width="994.7" height="1015.2"/>
+    <rect class="guide" x="1059.5" y="32.4" width="281" height="1015.2"/>
+    <rect class="guide" x="1362.1" y="32.4" width="994.7" height="1015.2"/>
+  </g>
+
+  <g id="zones-left">
+    <!-- Shoulders: 18 x 10 vmin each, gap 2 vmin (exact). -->
+    <rect class="zone" x="43.2" y="32.4" width="194.4" height="108" rx="12"/>
+    <text class="label" x="140.4" y="90">L2</text>
+    <text class="dim" x="140.4" y="122">194 × 108</text>
+    <rect class="zone" x="259.2" y="32.4" width="194.4" height="108" rx="12"/>
+    <text class="label" x="356.4" y="90">L1</text>
+    <text class="dim" x="356.4" y="122">194 × 108</text>
+
+    <!-- D-pad: 36 x 36 vmin, arms are thirds (exact). -->
+    <rect class="zone" x="43.2" y="189" width="388.8" height="388.8"/>
+    <rect class="zone" x="172.8" y="189" width="129.6" height="129.6"/>
+    <rect class="zone" x="172.8" y="448.2" width="129.6" height="129.6"/>
+    <rect class="zone" x="43.2" y="318.6" width="129.6" height="129.6"/>
+    <rect class="zone" x="302.4" y="318.6" width="129.6" height="129.6"/>
+    <text class="label" x="237.6" y="392">D-PAD</text>
+    <text class="dim" x="237.6" y="420">389 × 389 · arms 130 × 130</text>
+
+    <!-- Left stick: 30 vmin base, knob 40% (exact). -->
+    <circle class="zone" cx="789.2" cy="785.7" r="162"/>
+    <circle class="zone" cx="789.2" cy="785.7" r="64.8"/>
+    <text class="label" x="789.2" y="660">L STICK</text>
+    <text class="dim" x="789.2" y="880">base Ø 324 · knob Ø 130</text>
+
+    <!-- L3: 10 x 6 vmin minimum (exact). -->
+    <rect class="zone" x="735.2" y="963.9" width="108" height="64.8" rx="32"/>
+    <text class="label" x="789.2" y="1005">L3</text>
+  </g>
+
+  <g id="zones-right">
+    <rect class="zone" x="1946.4" y="32.4" width="194.4" height="108" rx="12"/>
+    <text class="label" x="2043.6" y="90">R1</text>
+    <text class="dim" x="2043.6" y="122">194 × 108</text>
+    <rect class="zone" x="2162.4" y="32.4" width="194.4" height="108" rx="12"/>
+    <text class="label" x="2259.6" y="90">R2</text>
+    <text class="dim" x="2259.6" y="122">194 × 108</text>
+
+    <!-- Face cluster: 38 x 38 vmin, buttons 13 vmin (exact). -->
+    <rect class="guide" x="1946.4" y="178.2" width="410.4" height="410.4"/>
+    <circle class="zone" cx="2151.6" cy="248.4" r="70.2"/>
+    <text class="label" x="2151.6" y="258">△ / Y</text>
+    <circle class="zone" cx="2286.6" cy="383.4" r="70.2"/>
+    <text class="label" x="2286.6" y="393">○ / B</text>
+    <circle class="zone" cx="2151.6" cy="518.4" r="70.2"/>
+    <text class="label" x="2151.6" y="528">✕ / A</text>
+    <circle class="zone" cx="2016.6" cy="383.4" r="70.2"/>
+    <text class="label" x="2016.6" y="393">□ / X</text>
+    <text class="dim" x="2151.6" y="610">cluster 410 × 410 · each Ø 140</text>
+
+    <circle class="zone" cx="1610.8" cy="785.7" r="162"/>
+    <circle class="zone" cx="1610.8" cy="785.7" r="64.8"/>
+    <text class="label" x="1610.8" y="660">R STICK</text>
+    <text class="dim" x="1610.8" y="880">base Ø 324 · knob Ø 130</text>
+
+    <rect class="zone" x="1556.8" y="963.9" width="108" height="64.8" rx="32"/>
+    <text class="label" x="1610.8" y="1005">R3</text>
+  </g>
+
+  <g id="zones-center">
+    <!-- Approximate: centre column content (measured). -->
+    <rect class="approx" x="1092" y="70" width="216" height="60" rx="30"/>
+    <text class="label" x="1200" y="110">STATUS</text>
+
+    <circle class="approx" cx="1200" cy="394" r="78"/>
+    <text class="label" x="1200" y="403">FIND PC</text>
+    <text class="dim" x="1200" y="500">Ø ~157</text>
+
+    <rect class="approx" x="1071" y="700" width="116" height="76" rx="38"/>
+    <text class="label" x="1129" y="690">SELECT</text>
+    <rect class="approx" x="1213" y="700" width="116" height="76" rx="38"/>
+    <text class="label" x="1271" y="690">START</text>
+    <text class="dim" x="1200" y="806">min 151 × 76 each</text>
+
+    <circle class="approx" cx="1149" cy="1000" r="45"/>
+    <text class="dim" x="1149" y="1007">⚙</text>
+    <circle class="approx" cx="1266" cy="1000" r="45"/>
+    <text class="dim" x="1266" y="1007">⏻</text>
+    <text class="note" x="1372" y="1000">settings / disconnect</text>
+  </g>
+
+  <g id="legend">
+    <rect x="1420" y="160" width="20" height="20" class="zone"/>
+    <text class="note" x="1450" y="178">exact (from CSS)</text>
+    <rect x="1420" y="195" width="20" height="20" class="approx"/>
+    <text class="note" x="1450" y="213">approx (centre column)</text>
+  </g>
+</svg>
