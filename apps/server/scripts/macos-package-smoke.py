@@ -11,6 +11,7 @@ from urllib.request import urlopen
 
 PORT = int(os.environ.get("GAMEPAD_PORT", "7531"))
 HOST = f"http://localhost:{PORT}"
+LOG_FILE = Path.home() / "Library/Logs/AlejoxGamepad/host.log"
 
 
 def get(url: str) -> str:
@@ -45,7 +46,10 @@ def main() -> None:
             while True:
                 if process.poll() is not None:
                     output = process.communicate(timeout=2)[0]
-                    raise AssertionError(f"Host exited before serving status (exit {process.returncode})\n{output}")
+                    log = LOG_FILE.read_text() if LOG_FILE.is_file() else ""
+                    raise AssertionError(
+                        f"Host exited before serving status (exit {process.returncode})\n{output}\n{log}"
+                    )
                 try:
                     status = json.loads(get(f"{HOST}/status"))
                     break
@@ -74,8 +78,10 @@ def main() -> None:
         print(output)
         if process.returncode != 0:
             raise AssertionError(f"Packaged host returned exit code {process.returncode}")
-        if "Received SIGTERM" not in output:
-            raise AssertionError("The host did not run its graceful SIGTERM shutdown")
+        # The launcher redirects the bundled server's output to a log file.
+        log = LOG_FILE.read_text() if LOG_FILE.is_file() else ""
+        if "Received SIGTERM" not in log:
+            raise AssertionError(f"The host log does not show a graceful SIGTERM shutdown:\n{log}")
         try:
             get(f"{HOST}/status")
             raise AssertionError("The bundled Node process remained alive after launcher shutdown")
