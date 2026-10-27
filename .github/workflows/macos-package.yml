@@ -1,0 +1,64 @@
+name: macos-package
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+    paths:
+      - "apps/server/**"
+      - "apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
+      - "packages/shared/**"
+      - "package-lock.json"
+      - ".github/workflows/macos-package.yml"
+  pull_request:
+    paths:
+      - "apps/server/**"
+      - "apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
+      - "packages/shared/**"
+      - "package-lock.json"
+      - ".github/workflows/macos-package.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Server unit tests
+        run: npm run test -w @gamepad/server
+      - name: Build macOS app, DMG and portable zip
+        working-directory: apps/server
+        run: |
+          test "$(uname -m)" = "arm64"
+          version="$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; fi
+          scripts/package-macos.sh "$version"
+      - name: Smoke test real packaged app without input permissions
+        working-directory: apps/server
+        run: python3 scripts/macos-package-smoke.py dist/macos/AlejoxGamepad.app
+      - name: Upload macOS packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlejoxGamepad-macOS-arm64
+          path: |
+            apps/server/dist/artifacts/AlejoxGamepad-*-macOS-arm64.dmg
+            apps/server/dist/artifacts/AlejoxGamepad-Portable-*-macOS-arm64.zip
+          if-no-files-found: error
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            apps/server/dist/artifacts/AlejoxGamepad-*-macOS-arm64.dmg
+            apps/server/dist/artifacts/AlejoxGamepad-Portable-*-macOS-arm64.zip
+          generate_release_notes: true

@@ -44,8 +44,9 @@ function printBanner(config: ServerConfig, port: number, driver: HostDriver): vo
   ];
   console.log(lines.join("\n"));
   if (process.platform === "darwin" && !config.dryRun && driver.kind === "keyboard") {
+    const permissionTarget = process.env.GAMEPAD_PACKAGED === "1" ? "AlejoxGamepad" : "this terminal";
     console.log(
-      "  macOS: grant Accessibility permission to this terminal (System Settings > Privacy & Security > Accessibility).\n",
+      `  macOS: grant Accessibility permission to ${permissionTarget} (System Settings > Privacy & Security > Accessibility).\n`,
     );
   }
 }

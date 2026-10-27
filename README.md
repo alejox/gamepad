@@ -31,6 +31,34 @@ installed, the included `redistributables/ViGEmBus_1.22.0_x64_x86_arm64.exe`
 can install it; otherwise the host uses keyboard/mouse. Allow `node.exe` on
 **Private networks** if Windows shows a firewall prompt.
 
+## macOS quick start (no developer tools)
+
+You need an **Apple Silicon Mac (arm64)**. Intel Macs are not supported. You do
+**not** need Node.js, npm, git, Xcode or any terminal commands.
+
+1. Download `AlejoxGamepad-<version>-macOS-arm64.dmg` from the latest
+   [GitHub Release](https://github.com/alejox/gamepad/releases/latest), open it
+   and drag **AlejoxGamepad** to **Applications**.
+2. The app is **not signed or notarized**, so Gatekeeper may warn that its
+   developer cannot be verified. In Applications, right-click
+   **AlejoxGamepad → Open**, then choose **Open** if you trust this release. If
+   macOS still blocks it, use **System Settings → Privacy & Security → Open
+   Anyway** for AlejoxGamepad.
+3. Open **System Settings → Privacy & Security → Accessibility**, enable
+   **AlejoxGamepad** (add it from Applications with **+** if needed), then quit
+   and reopen it. This permission is required for keyboard/mouse emulation.
+4. Launch **AlejoxGamepad** from Applications. It opens
+   `http://localhost:7531/` with the PC addresses, PIN and Keyboard / mouse
+   driver. The app runs in the background without opening Terminal.
+5. On the phone, install/open the app while connected to the same Wi-Fi. Enter
+   the PC address, port `7531` and the PIN, then tap **Connect** and play.
+
+For a portable setup, download
+`AlejoxGamepad-Portable-<version>-macOS-arm64.zip`, extract it and keep the
+whole `AlejoxGamepad.app` bundle together. The same Gatekeeper and Accessibility
+steps apply. macOS virtual gamepads are not included; this package uses
+keyboard/mouse.
+
 ## Development quick path
 
 1. Install dependencies: `npm install` (Node 22+, npm 10+).
@@ -68,6 +96,7 @@ focus, and when the server stops.
 | What | Version / note |
 |------|----------------|
 | Windows end user | Windows 10/11 x64; the packaged host includes Node and all native libraries |
+| macOS end user | macOS 13.5+ on Apple Silicon (arm64); the `.app` includes Node and all native addons |
 | Development | Node.js 22+ and npm 10+ (developed on Node 26) |
 | PC OS for development | Windows 10/11 or macOS (keyboard/mouse via `@jitsi/robotjs` prebuilt binaries) |
 | Phone | Android 7+ (API 24) on the same Wi-Fi as the PC |
@@ -113,9 +142,10 @@ one with `--driver=<mode>` (after `--` when using npm) or `GAMEPAD_DRIVER`:
   needs the ViGEmBus 1.22.0 driver and `ViGEmClient.dll` (built by CI). See
   [docs/windows-gamepad.md](docs/windows-gamepad.md).
 
-### macOS: grant Accessibility permission
+### macOS development: grant Accessibility permission
 
-Input emulation is blocked until the app that runs Node is trusted:
+Packaged-app setup is covered in the macOS quick start above. For source runs,
+input emulation is blocked until the app that runs Node is trusted:
 
 1. Open **System Settings → Privacy & Security → Accessibility**.
 2. Enable your terminal (Terminal, iTerm, VS Code…). Add it with **+** if missing.

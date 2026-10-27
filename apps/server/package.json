@@ -12,6 +12,7 @@
     "start:dry": "tsx --conditions=source src/main.ts --dry-run",
     "build": "tsc -p tsconfig.build.json",
     "build:bundle": "node scripts/build-bundle.mjs",
+    "package:macos": "bash scripts/package-macos.sh",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
