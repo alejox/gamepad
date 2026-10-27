@@ -1,31 +1,10 @@
 <script setup lang="ts">
 import { BUTTON_IDS, type ButtonId, DIRECTIONS, type Direction, KEY_NAMES, MOUSE_SENSITIVITY_RANGE } from "@gamepad/shared";
-import { ref } from "vue";
-import { CUSTOM_SKIN, DEADZONE_RANGE, SKINS } from "../domain/settings.js";
+import { DEADZONE_RANGE, SKINS } from "../domain/settings.js";
 import { useSettingsStore } from "../stores/settings.js";
 
-const emit = defineEmits<{ close: []; calibrate: [] }>();
+const emit = defineEmits<{ close: [] }>();
 const store = useSettingsStore();
-
-const fileInput = ref<HTMLInputElement | null>(null);
-const importing = ref(false);
-
-/** Opens the system picker (Android: gallery / files via the WebView file chooser). */
-function chooseImage(): void {
-  fileInput.value?.click();
-}
-
-async function onImagePicked(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = "";
-  if (!file) return;
-  importing.value = true;
-  const ok = await store.importPhoto(file);
-  importing.value = false;
-  // A fresh photo starts from the template; go straight to calibration.
-  if (ok) emit("calibrate");
-}
 
 const BUTTON_LABELS: Record<ButtonId, string> = {
   dpad_up: "D-pad up",
@@ -93,35 +72,6 @@ function numberFrom(event: Event): number {
         <span class="skin-name">{{ skin.name }}</span>
         <span class="skin-desc">{{ skin.description }}</span>
       </button>
-    </div>
-
-    <div class="custom-skin" :class="{ selected: store.settings.skin === CUSTOM_SKIN }">
-      <button
-        type="button"
-        role="radio"
-        class="custom-preview"
-        :aria-checked="store.settings.skin === CUSTOM_SKIN"
-        :disabled="!store.settings.customPhoto || !store.photoUrl"
-        aria-label="Use custom photo skin"
-        @click="store.settings.skin = CUSTOM_SKIN"
-      >
-        <img v-if="store.photoUrl" :src="store.photoUrl" alt="" />
-        <span v-else>No photo</span>
-      </button>
-      <div class="custom-info">
-        <span class="skin-name">Custom photo</span>
-        <span class="skin-desc">Any controller picture from your gallery. It stays on this device only.</span>
-        <div class="custom-actions">
-          <button type="button" :disabled="importing" @click="chooseImage">
-            {{ importing ? "Importing…" : "Choose image…" }}
-          </button>
-          <button type="button" :disabled="!store.settings.customPhoto || !store.photoUrl" @click="emit('calibrate')">
-            Calibrate layout
-          </button>
-          <button type="button" :disabled="!store.settings.customPhoto" @click="store.removePhoto()">Remove photo</button>
-        </div>
-      </div>
-      <input ref="fileInput" class="file-input" type="file" accept="image/*" @change="onImagePicked" />
     </div>
 
     <h2>Feel</h2>
@@ -260,58 +210,6 @@ button {
   height: 13px;
   border-radius: var(--face-radius);
   border: 2px solid currentColor;
-}
-.custom-skin {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-top: 10px;
-  padding: 8px;
-  border: 1px solid #2f3648;
-  border-radius: 10px;
-  background: #1c2130;
-}
-.custom-skin.selected {
-  border-color: #3fb8ff;
-  box-shadow: 0 0 0 2px #3fb8ff;
-}
-.custom-preview {
-  flex: none;
-  width: 120px;
-  height: 64px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  background: #0b0d12;
-  font-size: 0.75rem;
-  color: #9aa3b8;
-}
-.custom-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.custom-info {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-.custom-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-.custom-actions button {
-  padding: 6px 10px;
-  font-size: 0.85rem;
-}
-button:disabled {
-  opacity: 0.45;
-}
-.file-input {
-  display: none;
 }
 .skin-name {
   font-weight: 600;

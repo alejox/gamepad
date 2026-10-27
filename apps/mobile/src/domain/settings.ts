@@ -1,5 +1,4 @@
 import { DEFAULT_MAPPING, type KeyMapping, MOUSE_SENSITIVITY_RANGE, parseMapping } from "@gamepad/shared";
-import { type CustomLayout, defaultLayout, parseLayout } from "./customLayout.js";
 
 export const SKINS = [
   { id: "pro", name: "Pro", description: "Matte dotted black body, blue neon edge, colored face letters" },
@@ -12,21 +11,7 @@ export const SKINS = [
   { id: "midnight", name: "Midnight", description: "Matte midnight black, blue-lit touch panel, grey shape buttons" },
 ] as const;
 
-/** The user's own controller photo; it lives only on the device and is not in SKINS. */
-export const CUSTOM_SKIN = "custom";
-export const DEFAULT_SKIN = "pro";
-
-export type SkinId = (typeof SKINS)[number]["id"] | typeof CUSTOM_SKIN;
-
-/** Metadata for the on-device photo (the image itself is stored separately). */
-export interface CustomPhoto {
-  /** Key of the image blob in on-device storage. */
-  imageKey: string;
-  /** Stored (downscaled) image size in px. */
-  width: number;
-  height: number;
-  layout: CustomLayout;
-}
+export type SkinId = (typeof SKINS)[number]["id"];
 
 /** Skins whose face buttons show shape glyphs instead of letters. */
 const GLYPH_SKINS: ReadonlySet<SkinId> = new Set<SkinId>(["geo", "shapes", "midnight"]);
@@ -43,7 +28,6 @@ export interface Settings {
   /** Cursor speed in px/s at full right-stick deflection (sent to the server). */
   mouseSensitivity: number;
   mapping: KeyMapping;
-  customPhoto: CustomPhoto | null;
 }
 
 export interface ServerAddress {
@@ -60,37 +44,16 @@ export function cloneMapping(mapping: KeyMapping): KeyMapping {
 
 export function defaultSettings(): Settings {
   return {
-    skin: DEFAULT_SKIN,
+    skin: "pro",
     haptics: true,
     stickDeadzone: 0.08,
     mouseSensitivity: 1200,
     mapping: cloneMapping(DEFAULT_MAPPING),
-    customPhoto: null,
   };
 }
 
 export function isSkinId(value: unknown): value is SkinId {
-  return value === CUSTOM_SKIN || SKINS.some((skin) => skin.id === value);
-}
-
-const IMAGE_KEY = /^[\w-]{1,64}$/;
-const MAX_IMAGE_EDGE = 10_000;
-
-const isImageEdge = (value: unknown): value is number =>
-  Number.isInteger(value) && (value as number) > 0 && (value as number) <= MAX_IMAGE_EDGE;
-
-export function parseCustomPhoto(value: unknown): CustomPhoto | null {
-  if (typeof value !== "object" || value === null) return null;
-  const stored = value as Record<string, unknown>;
-  if (typeof stored.imageKey !== "string" || !IMAGE_KEY.test(stored.imageKey)) return null;
-  if (!isImageEdge(stored.width) || !isImageEdge(stored.height)) return null;
-  const aspect = stored.width / stored.height;
-  return {
-    imageKey: stored.imageKey,
-    width: stored.width,
-    height: stored.height,
-    layout: parseLayout(stored.layout, aspect) ?? defaultLayout(aspect),
-  };
+  return SKINS.some((skin) => skin.id === value);
 }
 
 function parseJson(raw: string | null): Record<string, unknown> | null {
@@ -117,9 +80,6 @@ export function parseStoredSettings(raw: string | null): Settings {
   if (inRange(stored.mouseSensitivity, MOUSE_SENSITIVITY_RANGE)) settings.mouseSensitivity = stored.mouseSensitivity;
   const mapping = parseMapping(stored.mapping);
   if (mapping) settings.mapping = mapping;
-  settings.customPhoto = parseCustomPhoto(stored.customPhoto);
-  // The custom skin needs a photo; without one it would render nothing.
-  if (settings.skin === CUSTOM_SKIN && !settings.customPhoto) settings.skin = DEFAULT_SKIN;
   return settings;
 }
 

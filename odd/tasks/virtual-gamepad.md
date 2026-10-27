@@ -39,7 +39,7 @@ into 4 digital keys. XInput is the most widely supported controller API on PC.
 - [x] V4 Linux adapter: koffi → libc open/ioctl/write on /dev/uinput as Xbox 360 (045e:028e), pure struct/ioctl encoders tested on Mac, fake-binding adapter tests; udev rule docs — route: delegated
 - [x] V5 Windows adapter: koffi → ViGEmClient.dll X360 target (XUSB_REPORT), fake-binding tests; DLL built by GitHub Actions windows runner (user chose CI; repo github.com/alejox/gamepad, pushed 2026-10-26); ViGEmBus install docs; fallback when bus missing — route: delegated
 - [x] V7 Mobile "Midnight" skin: matte black DualSense-style look (blue light strip around a large touch-panel plate, separate d-pad keys, outlined shape glyphs, dark sticks). Original artwork, no PS logo/Sony marks — route: delegated
-- [x] V8 Mobile "Custom photo" skin: user picks an image from the phone gallery (stored only on device via prefs/filesystem, never bundled), calibration mode to drag/resize hit zones for every control over the photo, saved per image; controls invisible over the photo with press feedback — route: delegated
+- [~] V8 (removed 2026-10-26 at user request; reverted e8935f5) Mobile "Custom photo" skin: user picks an image from the phone gallery (stored only on device via prefs/filesystem, never bundled), calibration mode to drag/resize hit zones for every control over the photo, saved per image; controls invisible over the photo with press feedback — route: delegated
 - [ ] V6 Real-hardware validation on user's Windows PC (and Linux if available) — user
 
 ## Acceptance criteria
@@ -50,7 +50,6 @@ into 4 digital keys. XInput is the most widely supported controller API on PC.
 ## Progress / Evidence
 
 V1 (2026-10-26): mobile 69/69, typecheck clean (writer); parent spot check 69/69. Shapes skin reuses geo glyph mechanism via usesFaceGlyphs(). Visual check pending on device.
-V7 (2026-10-26): Midnight skin d20baad, mobile 70/70. V8 (2026-10-26): custom photo skin, mobile 98/98, typecheck + build clean; image in WebView IndexedDB (downscaled ≤2048px), layout in Preferences; Android uses system file picker (no plugin). On-device check pending.
 V3 (2026-10-26): server 165/165, typecheck clean (writer); parent spot check 165/165, live /status shows driver. PadState (dpad as buttons), GamepadDriver {name,update,close}, selectDriver matrix, probes registry apps/server/src/adapters/gamepadProbes.ts (empty until V4/V5).
 V4 (2026-10-26): server 201/201, typecheck clean, koffi 3.3.4 loads on Mac (writer); parent spot check 201/201. CI run 40435649691 (ubuntu-latest): all steps green, 16 test files pass, smoke created the real device: `ok: "Microsoft X-Box 360 pad" is listed in /proc/bus/input/devices`. Game/SDL recognition still unverified.
 V5 (2026-10-26): server 248/248, typecheck clean (writer); parent spot check 248/248. ViGEmClient pinned b66d02d, built via msbuild Release_DLL x64 (CMake DLL exports nothing). CI run 40436356604 (windows-latest) all green: DLL built + exports checked, artifact ViGEmClient-win32-x64 uploaded, unit tests pass, smoke: `ok: loaded ...ViGEmClient.dll`, `vigem_connect → ViGEmBus bus not found (0xE0000001)` as expected.

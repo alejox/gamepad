@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import type { ButtonId, StickId } from "@gamepad/shared";
 import { computed } from "vue";
+import { tapFeedback } from "../adapters/haptics.js";
 import DPad from "../components/DPad.vue";
 import FaceLabel from "../components/FaceLabel.vue";
 import PadEmblem from "../components/PadEmblem.vue";
 import PadButton from "../components/PadButton.vue";
 import VirtualStick from "../components/VirtualStick.vue";
-import { usePadSession } from "../composables/usePadSession.js";
 import { usesFaceGlyphs } from "../domain/settings.js";
+import type { Vector } from "../domain/stick.js";
 import { useConnectionStore } from "../stores/connection.js";
 import { useSettingsStore } from "../stores/settings.js";
 
@@ -15,10 +17,38 @@ const emit = defineEmits<{ settings: [] }>();
 
 const connection = useConnectionStore();
 const settingsStore = useSettingsStore();
-const { resetKey, paired, statusText, emblemLabel, onEmblem, onButton, onStick } = usePadSession();
 
 /** Glyph faces follow the active skin; the prop is kept as an explicit override. */
 const glyphs = computed(() => props.glyphs || usesFaceGlyphs(settingsStore.settings.skin));
+
+const resetKey = computed(() => connection.releaseEpoch);
+const paired = computed(() => connection.status === "paired");
+const statusText = computed(() => {
+  if (connection.status === "awaiting") return "Waiting for approval…";
+  if (connection.reconnecting) return "Reconnecting…";
+  return connection.latencyMs === null ? "– ms" : `${connection.latencyMs} ms`;
+});
+
+const emblemLabel = computed(() => {
+  if (paired.value) return connection.hostName ? `Connected to ${connection.hostName}` : "Connected";
+  if (connection.status === "awaiting") return "Waiting for approval on the PC";
+  return "Find PC and connect";
+});
+
+/** Centre button: finds the PC again while not paired; inert while paired. */
+function onEmblem(): void {
+  if (paired.value || connection.status === "awaiting") return;
+  void connection.autoConnect();
+}
+
+function onButton(id: ButtonId, down: boolean): void {
+  if (down && settingsStore.settings.haptics) tapFeedback();
+  connection.pressButton(id, down);
+}
+
+function onStick(id: StickId, vector: Vector): void {
+  connection.moveStick(id, vector.x, vector.y);
+}
 
 const faces = ["y", "x", "b", "a"] as const;
 </script>
