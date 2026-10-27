@@ -38,16 +38,20 @@ describe("parseStoredSettings", () => {
     expect(restored).toEqual(defaultSettings());
   });
 
-  it("offers seven skins with pro first", () => {
-    expect(SKINS.map((skin) => skin.id)).toEqual(["pro", "neon", "retro8", "retro16", "green", "geo", "shapes"]);
+  it("offers eight skins with pro first", () => {
+    expect(SKINS.map((skin) => skin.id)).toEqual(["pro", "neon", "retro8", "retro16", "green", "geo", "shapes", "midnight"]);
   });
 
   it("restores the shapes skin", () => {
     expect(parseStoredSettings(JSON.stringify({ skin: "shapes" })).skin).toBe("shapes");
   });
 
+  it("restores the midnight skin", () => {
+    expect(parseStoredSettings(JSON.stringify({ skin: "midnight" })).skin).toBe("midnight");
+  });
+
   it("draws face glyphs only for the glyph skins", () => {
-    expect(SKINS.filter((skin) => usesFaceGlyphs(skin.id)).map((skin) => skin.id)).toEqual(["geo", "shapes"]);
+    expect(SKINS.filter((skin) => usesFaceGlyphs(skin.id)).map((skin) => skin.id)).toEqual(["geo", "shapes", "midnight"]);
   });
 });
 

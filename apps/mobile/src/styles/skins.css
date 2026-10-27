@@ -604,3 +604,251 @@
   box-shadow: 0 4px 8px rgb(0 0 0 / 55%), inset 0 3px 6px rgb(0 0 0 / 65%), 0 0 0 1px var(--shapes-glow),
     0 0 10px rgb(74 141 255 / 60%);
 }
+
+/*
+ * "Midnight": matte black dual-stick console pad. Original artwork: satin
+ * grips, a glossy rounded-trapezoid touch panel edged by blue light strips,
+ * a decorative speaker grille and monochrome outlined shape face glyphs.
+ * Scoped rules only target the live pad; Settings previews use the variables.
+ */
+[data-skin="midnight"] {
+  --mid-glow: #4f6cff;
+  --mid-strip: linear-gradient(180deg, #3b5bff 0%, #6a7dff 100%);
+  --mid-line: #c9ccd3;
+  --pad-bg: radial-gradient(ellipse 22% 46% at 50% 58%, #22242a 0%, #1b1c21 55%, transparent 100%),
+    radial-gradient(ellipse 30% 50% at 12% 92%, rgb(255 255 255 / 7%), transparent 70%),
+    radial-gradient(ellipse 30% 50% at 88% 92%, rgb(255 255 255 / 7%), transparent 70%),
+    linear-gradient(180deg, #16171b 0%, #0d0e11 100%);
+  --pad-fg: #9a9ea8;
+  --accent: #4f6cff;
+  --font-label: "Helvetica Neue", "Segoe UI", Roboto, system-ui, sans-serif;
+
+  --btn-bg: radial-gradient(circle at 40% 30%, #34363d 0%, #15161a 55%, #060708 100%);
+  --btn-border: 1px solid #050506;
+  --btn-shadow: 0 3px 6px rgb(0 0 0 / 60%), inset 0 1px 1px rgb(255 255 255 / 16%);
+  --btn-fg: #c9ccd3;
+
+  --dpad-bg: linear-gradient(160deg, #33353c 0%, #121316 70%);
+  --dpad-fg: #b4b8c1;
+  --dpad-border: 0;
+  --dpad-radius: 6px;
+
+  --shoulder-bg: linear-gradient(180deg, #2a2c32 0%, #121317 100%);
+  --shoulder-fg: #a9adb7;
+  --shoulder-border: 1px solid #08090b;
+  --shoulder-radius: 14px;
+
+  --small-bg: linear-gradient(180deg, #2c2e34, #15161a);
+  --small-fg: #c9ccd3;
+  --small-border: 1px solid #08090b;
+
+  --stick-base-bg: radial-gradient(circle at 50% 45%, #08090b 0%, #131418 62%, #2a2c32 88%, #3a3c43 100%);
+  --stick-base-border: 1px solid #050506;
+  --knob-bg: radial-gradient(circle at 50% 42%, #2c2e34 0%, #1b1c20 46%, #0e0f12 60%, transparent 61%),
+    repeating-conic-gradient(#30323a 0deg 5deg, #17181c 5deg 10deg);
+  --knob-border: 2px solid #3a3c43;
+}
+
+/* Centre: touch panel with blue edge strips, grille and the find-PC button. */
+[data-skin="midnight"] .gamepad .center {
+  position: relative;
+  isolation: isolate;
+  justify-content: flex-start;
+  min-width: 42vmin;
+  padding: 2vmin 0 1vmin;
+}
+[data-skin="midnight"] .gamepad .center::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 1vmin;
+  left: 6.5vmin;
+  right: 6.5vmin;
+  height: 16vmin;
+  border-radius: 2.4vmin 2.4vmin 5vmin 5vmin;
+  background: var(--mid-strip) left / 0.55vmin 100% no-repeat, var(--mid-strip) right / 0.55vmin 100% no-repeat,
+    linear-gradient(180deg, #23252b 0%, #121317 55%, #0b0c0f 100%);
+  box-shadow: -0.5vmin 0 1.6vmin -0.4vmin rgb(59 91 255 / 75%), 0.5vmin 0 1.6vmin -0.4vmin rgb(106 125 255 / 75%),
+    inset 0 1px 0 rgb(255 255 255 / 14%), 0 3px 8px rgb(0 0 0 / 60%);
+  transform: perspective(40vmin) rotateX(-7deg);
+  transform-origin: top center;
+  pointer-events: none;
+}
+/* Speaker grille: two decorative rows of dots under the panel. */
+[data-skin="midnight"] .gamepad .center::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 19.5vmin;
+  left: calc(50% - 6vmin);
+  width: 12vmin;
+  height: 2.4vmin;
+  background: radial-gradient(circle, #050506 0 0.35vmin, transparent 0.45vmin) 0 0 / 1.2vmin 1.2vmin;
+  pointer-events: none;
+}
+[data-skin="midnight"] .gamepad .status {
+  padding-top: 5vmin;
+  font-size: 2.6vmin;
+  color: #8a8f9a;
+}
+[data-skin="midnight"] .gamepad .tools {
+  margin-top: auto;
+}
+[data-skin="midnight"] .gamepad .tool:focus-visible {
+  outline: 2px solid var(--mid-glow);
+  outline-offset: 2px;
+}
+
+/* Find-PC button: small round dark cap with a faint blue ring. */
+[data-skin="midnight"] .gamepad .emblem {
+  display: grid;
+  place-items: center;
+  width: 9vmin;
+  height: 9vmin;
+  margin-top: 11vmin;
+  border-radius: 50%;
+  color: #b9c3ff;
+  background: radial-gradient(circle at 45% 35%, #2e3036 0%, #121317 70%);
+  border: 1px solid #050506;
+  box-shadow: 0 0 0 1px rgb(79 108 255 / 45%), 0 2px 5px rgb(0 0 0 / 60%);
+  transition: transform 60ms ease-out, box-shadow 120ms ease-out;
+}
+[data-skin="midnight"] .gamepad .emblem.live {
+  box-shadow: 0 0 0 1px var(--mid-glow), 0 0 10px rgb(79 108 255 / 70%);
+}
+[data-skin="midnight"] .gamepad .emblem:active:not([aria-disabled="true"]) {
+  transform: scale(0.92);
+  box-shadow: 0 0 0 1px var(--mid-glow), 0 0 16px rgb(79 108 255 / 90%);
+}
+[data-skin="midnight"] .gamepad .emblem:focus-visible {
+  outline: 2px solid var(--mid-glow);
+  outline-offset: 3px;
+}
+[data-skin="midnight"] .gamepad .emblem[aria-disabled="true"] {
+  cursor: default;
+}
+[data-skin="midnight"] .gamepad .emblem svg {
+  width: 58%;
+  height: 58%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* SELECT / START: tiny slim vertical pills beside the touch panel. */
+[data-skin="midnight"] .gamepad .menu {
+  position: absolute;
+  top: 3vmin;
+  left: 0;
+  right: 0;
+  justify-content: space-between;
+  padding: 0 0.6vmin;
+  pointer-events: none;
+}
+[data-skin="midnight"] .gamepad .menu .small {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  width: 4.6vmin;
+  height: 8.5vmin;
+  padding: 0;
+  font-size: 0;
+  pointer-events: auto;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 60%), inset 0 1px 0 rgb(255 255 255 / 10%);
+}
+/* START gets a three-line icon; SELECT stays a plain pill (named by aria-label). */
+[data-skin="midnight"] .gamepad .menu .small:last-child::before {
+  content: "";
+  width: 2vmin;
+  height: 1.8vmin;
+  background: linear-gradient(currentColor 0 0) top / 100% 0.3vmin no-repeat,
+    linear-gradient(currentColor 0 0) center / 100% 0.3vmin no-repeat,
+    linear-gradient(currentColor 0 0) bottom / 100% 0.3vmin no-repeat;
+}
+[data-skin="midnight"] .gamepad .small.pressed {
+  filter: none;
+  box-shadow: inset 0 0 0 1px var(--mid-glow), inset 0 0 6px rgb(79 108 255 / 70%);
+}
+
+/* Shoulders: dark rounded tabs. */
+[data-skin="midnight"] .gamepad .shoulder {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 60%), inset 0 1px 0 rgb(255 255 255 / 10%);
+}
+[data-skin="midnight"] .gamepad .shoulder.pressed {
+  filter: none;
+  background: linear-gradient(180deg, #17181c 0%, #0c0d10 100%);
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 70%), 0 0 0 1px rgb(79 108 255 / 55%);
+}
+
+/* D-pad: four separate glossy arrow keys with light-grey triangles. */
+[data-skin="midnight"] .gamepad .dpad-hub {
+  display: none;
+}
+[data-skin="midnight"] .gamepad .dpad-arm {
+  font-size: 2.2vmin;
+  transform: scale(0.88);
+  box-shadow: inset 0 1px 1px rgb(255 255 255 / 18%);
+}
+[data-skin="midnight"] .gamepad .dpad_up {
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
+}
+[data-skin="midnight"] .gamepad .dpad_down {
+  clip-path: polygon(50% 0, 100% 38%, 100% 100%, 0 100%, 0 38%);
+}
+[data-skin="midnight"] .gamepad .dpad_left {
+  clip-path: polygon(0 0, 62% 0, 100% 50%, 62% 100%, 0 100%);
+}
+[data-skin="midnight"] .gamepad .dpad_right {
+  clip-path: polygon(38% 0, 100% 0, 100% 100%, 38% 100%, 0 50%);
+}
+[data-skin="midnight"] .gamepad .dpad_up span {
+  margin-bottom: 30%;
+}
+[data-skin="midnight"] .gamepad .dpad_down span {
+  margin-top: 30%;
+}
+[data-skin="midnight"] .gamepad .dpad_left span {
+  margin-right: 30%;
+}
+[data-skin="midnight"] .gamepad .dpad_right span {
+  margin-left: 30%;
+}
+[data-skin="midnight"] .gamepad .dpad-arm.pressed {
+  transform: scale(0.84);
+  filter: none;
+  color: #fff;
+  background: linear-gradient(160deg, #24262c, #0b0c0f);
+}
+
+/* Face buttons: glossy caps with thin grey outlined shapes, white glow on press. */
+[data-skin="midnight"] .gamepad .face .glyph {
+  width: 54%;
+  height: 54%;
+  stroke-width: 1.4;
+}
+[data-skin="midnight"] .gamepad .face.pressed {
+  filter: none;
+  color: #fff;
+  box-shadow: inset 0 0 8px rgb(255 255 255 / 25%), 0 0 10px rgb(255 255 255 / 45%);
+}
+[data-skin="midnight"] .gamepad .face.pressed .glyph {
+  filter: drop-shadow(0 0 3px rgb(255 255 255 / 80%));
+}
+
+/* Sticks: recessed wells with a knurled ring around a concave cap. */
+[data-skin="midnight"] .gamepad .stick {
+  box-shadow: inset 0 5px 12px rgb(0 0 0 / 80%), 0 1px 0 rgb(255 255 255 / 6%);
+}
+[data-skin="midnight"] .gamepad .stick-knob {
+  width: 46%;
+  height: 46%;
+  box-shadow: 0 4px 8px rgb(0 0 0 / 65%), inset 0 -1px 1px rgb(255 255 255 / 14%);
+}
+[data-skin="midnight"] .gamepad .stick.active .stick-knob {
+  filter: none;
+  box-shadow: 0 4px 8px rgb(0 0 0 / 65%), 0 0 0 1px rgb(255 255 255 / 35%), 0 0 10px rgb(255 255 255 / 25%);
+}
