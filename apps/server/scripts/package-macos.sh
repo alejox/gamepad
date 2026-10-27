@@ -76,8 +76,9 @@ fi
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $version" "$contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion $minimum_system_version" "$contents/Info.plist"
 
-clang++ -std=c++17 -O2 -Wall -Wextra -Werror -arch arm64 -mmacosx-version-min=11.0 \
-  "$server_root/packaging/macos/launcher.cpp" -o "$contents/MacOS/AlejoxGamepad"
+clang++ -std=c++17 -fobjc-arc -O2 -Wall -Wextra -Werror -arch arm64 -mmacosx-version-min=11.0 \
+  -framework Cocoa \
+  "$server_root/packaging/macos/launcher.mm" -o "$contents/MacOS/AlejoxGamepad"
 
 mkdir -p "$resources/node_modules/@jitsi" "$resources/node_modules/@koromix"
 cp -R "$repository_root/node_modules/@jitsi/robotjs" "$resources/node_modules/@jitsi/robotjs"
