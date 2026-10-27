@@ -131,6 +131,15 @@ if [[ "$("$resources/node" --version)" != "$node_version" ]]; then
   exit 1
 fi
 
+koffi_binary="$resources/node_modules/@koromix/koffi-darwin-arm64/darwin_arm64/koffi.node"
+codesign --force --sign - \
+  "$resources/node" \
+  "$robot_binary" \
+  "$koffi_binary" \
+  "$contents/MacOS/AlejoxGamepad"
+codesign --force --sign - "$app"
+codesign --verify --deep --strict --verbose=2 "$app"
+
 dmg_stage="$stage/dmg"
 mkdir -p "$dmg_stage"
 ditto "$app" "$dmg_stage/AlejoxGamepad.app"
@@ -140,6 +149,8 @@ zip="$artifacts/AlejoxGamepad-Portable-$version-macOS-arm64.zip"
 rm -f "$dmg" "$zip"
 hdiutil create -volname AlejoxGamepad -srcfolder "$dmg_stage" -ov -format UDZO \
   -imagekey zlib-level=9 "$dmg"
+codesign --force --sign - "$dmg"
+codesign --verify --verbose=2 "$dmg"
 hdiutil verify "$dmg"
 ditto -c -k --sequesterRsrc --keepParent "$app" "$zip"
 

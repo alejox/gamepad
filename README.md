@@ -39,11 +39,12 @@ You need an **Apple Silicon Mac (arm64)**. Intel Macs are not supported. You do
 1. Download `AlejoxGamepad-<version>-macOS-arm64.dmg` from the latest
    [GitHub Release](https://github.com/alejox/gamepad/releases/latest), open it
    and drag **AlejoxGamepad** to **Applications**.
-2. The app is **not signed or notarized**, so Gatekeeper may warn that its
-   developer cannot be verified. In Applications, right-click
-   **AlejoxGamepad → Open**, then choose **Open** if you trust this release. If
-   macOS still blocks it, use **System Settings → Privacy & Security → Open
-   Anyway** for AlejoxGamepad.
+2. The app is ad-hoc signed but **not notarized or signed with a Developer ID
+   certificate**, so Gatekeeper may warn that its developer cannot be verified.
+   In Applications, right-click **AlejoxGamepad → Open**, then choose **Open**
+   if you trust this release. If macOS still blocks it, use **System Settings →
+   Privacy & Security → Open Anyway** for AlejoxGamepad. A **“damaged”** warning
+   is not expected: download the latest release instead of an older package.
 3. Open **System Settings → Privacy & Security → Accessibility**, enable
    **AlejoxGamepad** (add it from Applications with **+** if needed), then quit
    and reopen it. This permission is required for keyboard/mouse emulation.

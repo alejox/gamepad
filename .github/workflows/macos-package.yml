@@ -43,6 +43,13 @@ jobs:
           version="$(node -p "require('./package.json').version")"
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; fi
           scripts/package-macos.sh "$version"
+      - name: Verify app and DMG signatures
+        working-directory: apps/server
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; fi
+          codesign --verify --deep --strict --verbose=2 dist/macos/AlejoxGamepad.app
+          codesign --verify --verbose=2 "dist/artifacts/AlejoxGamepad-$version-macOS-arm64.dmg"
       - name: Smoke test real packaged app without input permissions
         working-directory: apps/server
         run: python3 scripts/macos-package-smoke.py dist/macos/AlejoxGamepad.app
