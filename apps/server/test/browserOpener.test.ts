@@ -2,11 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { createBrowserOpener, shouldOpenBrowser } from "../src/adapters/browserOpener.js";
 
 describe("shouldOpenBrowser", () => {
-  it.each(["win32", "darwin"] as const)("opens for the packaged %s host", (platform) => {
-    expect(shouldOpenBrowser({ packaged: true, open: true, platform })).toBe(true);
+  it("opens for the packaged Windows host", () => {
+    expect(shouldOpenBrowser({ packaged: true, open: true, platform: "win32" })).toBe(true);
   });
 
   it.each([
+    ["macOS packaged (uses the status item)", { packaged: true, open: true, platform: "darwin" }],
     ["Windows dev run (not packaged)", { packaged: false, open: true, platform: "win32" }],
     ["macOS dev run (not packaged)", { packaged: false, open: true, platform: "darwin" }],
     ["Windows --no-open", { packaged: true, open: false, platform: "win32" }],

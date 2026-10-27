@@ -7,7 +7,9 @@ export interface BrowserOpenPolicy {
 }
 
 export function shouldOpenBrowser({ packaged, open, platform }: BrowserOpenPolicy): boolean {
-  return packaged && open && (platform === "win32" || platform === "darwin");
+  // The packaged macOS host shows a native menu bar status item instead; the
+  // browser opens only for the packaged Windows host.
+  return packaged && open && platform === "win32";
 }
 
 interface SpawnedBrowser {

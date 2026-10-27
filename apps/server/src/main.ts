@@ -99,6 +99,10 @@ async function main(): Promise<void> {
   });
   port = await startServerWithFallback(server, config.port, logger);
   printBanner(config, port, driverInfo);
+  if (process.env.GAMEPAD_PACKAGED === "1") {
+    // The macOS launcher parses this line to learn the (possibly fallback) port.
+    console.log(`GAMEPAD_READY ${port}`);
+  }
   if (shouldOpenBrowser({ packaged: process.env.GAMEPAD_PACKAGED === "1", open: config.open, platform: process.platform })) {
     createBrowserOpener()(`http://localhost:${port}/`);
   }
