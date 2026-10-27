@@ -1,14 +1,37 @@
 # Gamepad — use your Android phone as a Wi-Fi PC controller
 
 The phone shows a virtual controller (two sticks, d-pad, face buttons,
-shoulders, Start/Select). A small Node server on the PC receives the input over
-WebSocket and emulates **keyboard and mouse** on Windows or macOS. No drivers.
+shoulders, Start/Select). The PC host receives the input over WebSocket and
+emulates an **Xbox 360 controller** or **keyboard and mouse**.
 
-- Left stick → digital directional keys (WASD by default).
-- Right stick → mouse movement (velocity based, configurable sensitivity).
+- Left stick → digital directional keys (WASD by default) or an Xbox stick.
+- Right stick → mouse movement (velocity based, configurable sensitivity) or an Xbox stick.
 - Every button maps to a key or mouse button, editable on the phone.
 
-## Quick path
+## Windows quick start (no developer tools)
+
+You do **not** need Node.js, npm, git, Visual Studio or a separate DLL download.
+
+1. Download `AlejoxGamepad-Setup-<version>.exe` from the latest
+   [GitHub Release](https://github.com/alejox/gamepad/releases/latest) and run it.
+2. Leave **Install ViGEmBus 1.22.0** selected to create a virtual Xbox 360
+   controller. Installation needs administrator rights; reboot if the driver
+   installer asks for it.
+3. Start **AlejoxGamepad** from the Start menu or desktop. It opens
+   `http://localhost:7531/` with the PC addresses, PIN and selected driver.
+4. On the phone, install/open the app while connected to the same Wi-Fi. Enter
+   the PC address, port `7531` and the PIN, then tap **Connect** and play.
+
+The installer also adds a private-network firewall rule and an uninstaller.
+The packages are not code-signed, so Windows SmartScreen may show a warning.
+
+For a portable setup, download `AlejoxGamepad-Portable-<version>.zip`, extract
+it and run `AlejoxGamepad.exe`. Keep all files together. If ViGEmBus is not
+installed, the included `redistributables/ViGEmBus_1.22.0_x64_x86_arm64.exe`
+can install it; otherwise the host uses keyboard/mouse. Allow `node.exe` on
+**Private networks** if Windows shows a firewall prompt.
+
+## Development quick path
 
 1. Install dependencies: `npm install` (Node 22+, npm 10+).
 2. Start the server on the PC: `npm run start -w @gamepad/server`.
@@ -44,15 +67,16 @@ focus, and when the server stops.
 
 | What | Version / note |
 |------|----------------|
-| Node.js | 22 or newer (developed on Node 26) |
-| PC OS | Windows 10/11 or macOS (keyboard/mouse via `@jitsi/robotjs` prebuilt binaries) |
+| Windows end user | Windows 10/11 x64; the packaged host includes Node and all native libraries |
+| Development | Node.js 22+ and npm 10+ (developed on Node 26) |
+| PC OS for development | Windows 10/11 or macOS (keyboard/mouse via `@jitsi/robotjs` prebuilt binaries) |
 | Phone | Android 7+ (API 24) on the same Wi-Fi as the PC |
 | APK build only | JDK 21 + Android SDK (Android Studio) |
 
-## Run the server
+## Run the server from source
 
 ```bash
-npm run start -w @gamepad/server             # real keyboard/mouse emulation
+npm run start -w @gamepad/server             # real input emulation (auto driver)
 npm run start:dry -w @gamepad/server         # log only (safe to test)
 GAMEPAD_PIN=123456 GAMEPAD_PORT=7531 GAMEPAD_SENSITIVITY=1500 npm run start -w @gamepad/server
 ```
@@ -99,9 +123,10 @@ Input emulation is blocked until the app that runs Node is trusted:
 
 ### Windows: firewall
 
-On first start Windows asks whether Node.js may accept connections. Allow it on
-**Private networks** (make sure your Wi-Fi profile is set to Private). If you
-missed the prompt, allow `node.exe` in *Windows Defender Firewall → Allow an app*.
+The installer allows TCP port 7531 for its included `node.exe` on **Private**
+networks and removes that rule on uninstall. For portable or source use, allow
+`node.exe` on **Private networks** when Windows asks (the Wi-Fi profile must be
+Private). If you missed the prompt, use *Windows Defender Firewall → Allow an app*.
 
 ## Run the mobile app in a browser (development)
 
@@ -174,6 +199,5 @@ because TypeScript 7 no longer ships the JS API vue-tsc needs.
 
 ## Roadmap
 
-- **Phase 2:** real XInput virtual controller (Windows only).
 - Automatic discovery (mDNS/UDP) and QR pairing.
-- Single-executable server and signed release APK.
+- Signed Windows host and release APK.
