@@ -7,7 +7,7 @@
     "gamepad-server": "./dist/main.js"
   },
   "scripts": {
-    "dev": "tsx --conditions=source watch src/main.ts",
+    "dev": "tsx watch --conditions=source src/main.ts",
     "start": "tsx --conditions=source src/main.ts",
     "start:dry": "tsx --conditions=source src/main.ts --dry-run",
     "build": "tsc -p tsconfig.build.json",

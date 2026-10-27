@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { type IncomingMessage, type Server, STATUS_CODES, type ServerResponse, createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import {
   type ClientMessage,
@@ -13,6 +14,7 @@ import { type WebSocket, WebSocketServer } from "ws";
 import { dispatchKeyActions } from "../application/dispatchKeyActions.js";
 import { ControllerState, type KeyAction } from "../domain/ControllerState.js";
 import { MouseMotion, type MouseMotionOptions } from "../domain/MouseMotion.js";
+import type { ControllerStatus, ControllerStatusListener } from "../ports/ControllerStatus.js";
 import type { InputDriver } from "../ports/InputDriver.js";
 import type { Logger } from "../ports/Logger.js";
 
@@ -29,6 +31,17 @@ export interface GamepadServerOptions {
   /** Mouse tick period; ~8 ms is about 120 Hz. */
   tickIntervalMs?: number;
   now?: () => number;
+  /** Plain HTTP requests on the same port; without it they get 426. */
+  http?: HttpRequestHandler;
+  /** Called whenever a controller pairs or disconnects. */
+  onStatusChange?: ControllerStatusListener;
+}
+
+/** Handles non-upgrade HTTP requests that share the WebSocket port. */
+export interface HttpRequestHandler {
+  handle(req: IncomingMessage, res: ServerResponse): void;
+  /** Ends long-lived responses (e.g. event streams) before the port closes. */
+  close(): void;
 }
 
 /** Policy-violation close code; the reason carries our error code. */
@@ -43,6 +56,7 @@ interface Session {
   lastTick: number;
   /** Last right-stick vector, re-applied when sensitivity changes. */
   right: { x: number; y: number };
+  remote: string;
 }
 
 /**
@@ -51,6 +65,7 @@ interface Session {
  */
 export class WebSocketGamepadServer {
   private wss: WebSocketServer | undefined;
+  private httpServer: Server | undefined;
   private active: Session | undefined;
   private readonly helloTimeoutMs: number;
   private readonly tickIntervalMs: number;
@@ -62,22 +77,33 @@ export class WebSocketGamepadServer {
     this.now = options.now ?? (() => performance.now());
   }
 
-  /** Starts listening and resolves with the bound port. */
+  /** Current pairing state, for status displays. */
+  controllerStatus(): ControllerStatus {
+    return this.active
+      ? { connected: true, remoteAddress: this.active.remote }
+      : { connected: false, remoteAddress: null };
+  }
+
+  /**
+   * Starts listening and resolves with the bound port. WebSocket upgrades and
+   * plain HTTP requests share one port.
+   */
   start(): Promise<number> {
     return new Promise((resolve, reject) => {
-      const wss = new WebSocketServer({
-        port: this.options.port,
-        host: this.options.host ?? "0.0.0.0",
-        maxPayload: MAX_PAYLOAD_BYTES,
+      const httpServer = createServer((req, res) => this.handleHttp(req, res));
+      const wss = new WebSocketServer({ server: httpServer, maxPayload: MAX_PAYLOAD_BYTES });
+      httpServer.once("error", reject);
+      httpServer.once("listening", () => {
+        httpServer.off("error", reject);
+        httpServer.on("error", (error) => this.options.logger.warn(`Server error: ${error.message}`));
+        resolve((httpServer.address() as AddressInfo).port);
       });
-      wss.once("error", reject);
-      wss.once("listening", () => {
-        wss.off("error", reject);
-        wss.on("error", (error) => this.options.logger.warn(`Server error: ${error.message}`));
-        resolve((wss.address() as AddressInfo).port);
-      });
+      // Errors on the HTTP server are re-emitted by wss; logged above instead.
+      wss.on("error", () => {});
       wss.on("connection", (socket, request) => this.handleConnection(socket, request.socket.remoteAddress));
+      httpServer.listen(this.options.port, this.options.host ?? "0.0.0.0");
       this.wss = wss;
+      this.httpServer = httpServer;
     });
   }
 
@@ -85,13 +111,34 @@ export class WebSocketGamepadServer {
   async stop(): Promise<void> {
     if (this.active) this.endSession(this.active);
     const wss = this.wss;
+    const httpServer = this.httpServer;
     this.wss = undefined;
-    if (!wss) return;
-    for (const client of wss.clients) client.terminate();
-    await new Promise<void>((resolve) => wss.close(() => resolve()));
+    this.httpServer = undefined;
+    this.options.http?.close();
+    if (wss) {
+      for (const client of wss.clients) client.terminate();
+      await new Promise<void>((resolve) => wss.close(() => resolve()));
+    }
+    if (httpServer?.listening) {
+      const closed = new Promise<void>((resolve) => httpServer.close(() => resolve()));
+      httpServer.closeAllConnections();
+      await closed;
+    }
   }
 
-  private handleConnection(socket: WebSocket, remote = "unknown"): void {
+  private handleHttp(req: IncomingMessage, res: ServerResponse): void {
+    if (this.options.http) {
+      this.options.http.handle(req, res);
+      return;
+    }
+    // Same answer `ws` gives to non-upgrade requests on a standalone server.
+    const body = STATUS_CODES[426] ?? "Upgrade Required";
+    res.writeHead(426, { "Content-Type": "text/plain", "Content-Length": Buffer.byteLength(body) });
+    res.end(body);
+  }
+
+  private handleConnection(socket: WebSocket, remoteAddress: string | undefined): void {
+    const remote = displayAddress(remoteAddress);
     const { logger } = this.options;
     if (this.active) {
       this.reject(socket, "busy");
@@ -108,8 +155,11 @@ export class WebSocketGamepadServer {
         return;
       }
       clearTimeout(helloTimer);
-      session = this.pair(socket, message);
-      if (session) logger.info(`Controller connected from ${remote}`);
+      session = this.pair(socket, message, remote);
+      if (session) {
+        logger.info(`Controller connected from ${remote}`);
+        this.emitStatus();
+      }
     });
 
     socket.on("close", () => {
@@ -123,7 +173,7 @@ export class WebSocketGamepadServer {
     socket.on("error", (error) => logger.warn(`Connection error (${remote}): ${error.message}`));
   }
 
-  private pair(socket: WebSocket, message: ClientMessage | null): Session | undefined {
+  private pair(socket: WebSocket, message: ClientMessage | null, remote: string): Session | undefined {
     if (message?.t !== "hello") return this.reject(socket, "not_paired");
     if (message.v !== PROTOCOL_VERSION) return this.reject(socket, "version");
     if (!pinMatches(message.pin, this.options.pin)) return this.reject(socket, "bad_pin");
@@ -139,6 +189,7 @@ export class WebSocketGamepadServer {
       ticker: undefined,
       lastTick: 0,
       right: { x: 0, y: 0 },
+      remote,
     };
     this.active = session;
     send(socket, { t: "welcome" });
@@ -203,7 +254,19 @@ export class WebSocketGamepadServer {
     this.stopTicker(session);
     session.motion.setVector(0, 0);
     this.apply(session.state.releaseAll());
-    if (this.active === session) this.active = undefined;
+    if (this.active !== session) return;
+    this.active = undefined;
+    this.emitStatus();
+  }
+
+  private emitStatus(): void {
+    const listener = this.options.onStatusChange;
+    if (!listener) return;
+    try {
+      listener(this.controllerStatus());
+    } catch (error) {
+      this.options.logger.warn(`Status listener failed: ${errorMessage(error)}`);
+    }
   }
 
   private apply(actions: readonly KeyAction[]): void {
@@ -230,6 +293,12 @@ function pinMatches(candidate: string, expected: string): boolean {
   const a = Buffer.from(candidate);
   const b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** Strips the IPv4-mapped IPv6 prefix so the address reads like the phone's IP. */
+function displayAddress(address: string | undefined): string {
+  if (!address) return "unknown";
+  return address.startsWith("::ffff:") ? address.slice("::ffff:".length) : address;
 }
 
 function errorMessage(error: unknown): string {

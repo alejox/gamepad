@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { WebSocketGamepadServer } from "./adapters/WebSocketGamepadServer.js";
+import { createHostStatusHttp } from "./adapters/hostStatusHttp.js";
 import { LoggingInputDriver } from "./adapters/LoggingInputDriver.js";
 import { lanIPv4Addresses } from "./adapters/networkAddresses.js";
 import { RobotInputDriver } from "./adapters/RobotInputDriver.js";
@@ -23,6 +24,7 @@ function printBanner(config: ServerConfig, port: number): void {
       : [`  Address : (no LAN IPv4 found) port ${port}`]),
     `  PIN     : ${config.pin}`,
     `  Mode    : ${config.dryRun ? "dry run (input is only logged)" : "keyboard/mouse emulation"}`,
+    `  Host UI : http://localhost:${port}/`,
     "",
   ];
   console.log(lines.join("\n"));
@@ -39,15 +41,27 @@ async function createDriver(dryRun: boolean): Promise<InputDriver> {
 
 async function main(): Promise<void> {
   const config = parseConfig(process.argv.slice(2), process.env);
-  const server = new WebSocketGamepadServer({
+  let port = config.port;
+  const hostStatus = createHostStatusHttp({
+    snapshot: () => ({
+      addresses: lanIPv4Addresses().map((address) => `${address}:${port}`),
+      port,
+      pin: config.pin,
+      mode: config.dryRun ? "dry-run" : "emulation",
+      controller: server.controllerStatus(),
+    }),
+  });
+  const server: WebSocketGamepadServer = new WebSocketGamepadServer({
     port: config.port,
     pin: config.pin,
     driver: await createDriver(config.dryRun),
     logger,
     deadzone: 0.3,
     mouse: { deadzone: 0.15, sensitivity: config.sensitivity, exponent: 2 },
+    http: hostStatus,
+    onStatusChange: () => hostStatus.notify(),
   });
-  const port = await server.start();
+  port = await server.start();
   printBanner(config, port);
 
   let stopping = false;
