@@ -62,8 +62,29 @@ GAMEPAD_PIN=123456 GAMEPAD_PORT=7531 GAMEPAD_SENSITIVITY=1500 npm run start -w @
 | `GAMEPAD_PORT` | `7531` | WebSocket port |
 | `GAMEPAD_PIN` | random | 6-digit pairing PIN |
 | `GAMEPAD_SENSITIVITY` | `1200` | Default cursor speed (px/s at full right stick); the phone can override it per session (100–5000) |
+| `GAMEPAD_DRIVER` | `auto` | Output driver: `auto`, `gamepad` or `keyboard` (the `--driver=` flag wins) |
 
 Stop with `Ctrl+C`; held input is released first.
+
+### Driver modes
+
+The server outputs either a **virtual Xbox 360 pad** or **keyboard/mouse**. Pick
+one with `--driver=<mode>` (after `--` when using npm) or `GAMEPAD_DRIVER`:
+
+| Mode | Behavior |
+|------|----------|
+| `auto` (default) | Virtual pad when available, otherwise keyboard/mouse with a notice |
+| `gamepad` | Virtual pad or exit with an error |
+| `keyboard` | Keyboard/mouse only (the phone's key mapping and right-stick mouse) |
+
+- In pad mode buttons map by position (A/B/X/Y, L1/R1 → LB/RB, L2/R2 → full
+  triggers, Select → Back), the right stick is a real stick, and key mappings
+  are ignored. The banner and host page show the active driver.
+- `--dry-run --driver=gamepad` logs pad state instead of creating a device.
+- **macOS** always uses keyboard/mouse: virtual HID devices need a DriverKit
+  entitlement.
+- **Windows** (ViGEmBus) and **Linux** (uinput) backends are coming; until then
+  `auto` falls back to keyboard/mouse.
 
 ### macOS: grant Accessibility permission
 

@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 import { WebSocketGamepadServer } from "./adapters/WebSocketGamepadServer.js";
-import { createHostStatusHttp } from "./adapters/hostStatusHttp.js";
+import { NATIVE_GAMEPAD_PROBES } from "./adapters/gamepadProbes.js";
+import { type HostDriver, createHostStatusHttp } from "./adapters/hostStatusHttp.js";
+import { LoggingGamepadDriver } from "./adapters/LoggingGamepadDriver.js";
 import { LoggingInputDriver } from "./adapters/LoggingInputDriver.js";
 import { lanIPv4Addresses } from "./adapters/networkAddresses.js";
 import { RobotInputDriver } from "./adapters/RobotInputDriver.js";
+import { selectDriver } from "./application/selectDriver.js";
 import { type ServerConfig, parseConfig } from "./config.js";
+import type { GamepadDriver } from "./ports/GamepadDriver.js";
 import type { InputDriver } from "./ports/InputDriver.js";
 import type { Logger } from "./ports/Logger.js";
 
@@ -13,7 +17,16 @@ const logger: Logger = {
   warn: (message) => console.warn(message),
 };
 
-function printBanner(config: ServerConfig, port: number): void {
+/** The chosen output: exactly one of a virtual pad or keyboard/mouse. */
+type Output = { gamepad: GamepadDriver; driver?: undefined } | { driver: InputDriver; gamepad?: undefined };
+
+function describeOutput(output: Output): HostDriver {
+  return output.gamepad
+    ? { kind: "gamepad", name: output.gamepad.name }
+    : { kind: "keyboard", name: "Keyboard / mouse" };
+}
+
+function printBanner(config: ServerConfig, port: number, driver: HostDriver): void {
   const addresses = lanIPv4Addresses();
   const lines = [
     "",
@@ -23,24 +36,37 @@ function printBanner(config: ServerConfig, port: number): void {
       ? addresses.map((address) => `  Address : ${address}:${port}`)
       : [`  Address : (no LAN IPv4 found) port ${port}`]),
     `  PIN     : ${config.pin}`,
-    `  Mode    : ${config.dryRun ? "dry run (input is only logged)" : "keyboard/mouse emulation"}`,
+    `  Mode    : ${config.dryRun ? "dry run (input is only logged)" : "live input emulation"}`,
+    `  Driver  : ${driver.name}`,
     `  Host UI : http://localhost:${port}/`,
     "",
   ];
   console.log(lines.join("\n"));
-  if (process.platform === "darwin" && !config.dryRun) {
+  if (process.platform === "darwin" && !config.dryRun && driver.kind === "keyboard") {
     console.log(
       "  macOS: grant Accessibility permission to this terminal (System Settings > Privacy & Security > Accessibility).\n",
     );
   }
 }
 
-async function createDriver(dryRun: boolean): Promise<InputDriver> {
-  return dryRun ? new LoggingInputDriver() : RobotInputDriver.create();
+async function createOutput(config: ServerConfig): Promise<Output> {
+  const selection = await selectDriver({
+    platform: process.platform,
+    requested: config.driver,
+    dryRun: config.dryRun,
+    probes: NATIVE_GAMEPAD_PROBES,
+    dryRunGamepad: () => new LoggingGamepadDriver(),
+  });
+  if (selection.kind === "error") throw new Error(selection.message);
+  if (selection.kind === "gamepad") return { gamepad: selection.driver };
+  if (selection.notice) logger.warn(selection.notice);
+  return { driver: config.dryRun ? new LoggingInputDriver() : await RobotInputDriver.create() };
 }
 
 async function main(): Promise<void> {
   const config = parseConfig(process.argv.slice(2), process.env);
+  const output = await createOutput(config);
+  const driverInfo = describeOutput(output);
   let port = config.port;
   const hostStatus = createHostStatusHttp({
     snapshot: () => ({
@@ -48,6 +74,7 @@ async function main(): Promise<void> {
       port,
       pin: config.pin,
       mode: config.dryRun ? "dry-run" : "emulation",
+      driver: driverInfo,
       controller: server.controllerStatus(),
       pending: server.pendingRequest(),
     }),
@@ -59,7 +86,7 @@ async function main(): Promise<void> {
   const server: WebSocketGamepadServer = new WebSocketGamepadServer({
     port: config.port,
     pin: config.pin,
-    driver: await createDriver(config.dryRun),
+    ...output,
     logger,
     deadzone: 0.3,
     mouse: { deadzone: 0.15, sensitivity: config.sensitivity, exponent: 2 },
@@ -67,7 +94,7 @@ async function main(): Promise<void> {
     onStatusChange: () => hostStatus.notify(),
   });
   port = await server.start();
-  printBanner(config, port);
+  printBanner(config, port, driverInfo);
 
   let stopping = false;
   const shutdown = async (signal: string): Promise<void> => {
@@ -75,6 +102,7 @@ async function main(): Promise<void> {
     stopping = true;
     logger.info(`\nReceived ${signal}; releasing input and shutting down.`);
     await server.stop();
+    await output.gamepad?.close();
     process.exit(0);
   };
   process.on("SIGINT", () => void shutdown("SIGINT"));

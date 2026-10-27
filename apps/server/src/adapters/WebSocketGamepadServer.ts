@@ -14,9 +14,11 @@ import {
 } from "@gamepad/shared";
 import { type WebSocket, WebSocketServer } from "ws";
 import { dispatchKeyActions } from "../application/dispatchKeyActions.js";
+import { PadOutput } from "../application/PadOutput.js";
 import { ControllerState, type KeyAction } from "../domain/ControllerState.js";
 import { MouseMotion, type MouseMotionOptions } from "../domain/MouseMotion.js";
 import type { ControllerStatus, ControllerStatusListener, PendingRequest } from "../ports/ControllerStatus.js";
+import type { GamepadDriver } from "../ports/GamepadDriver.js";
 import type { InputDriver } from "../ports/InputDriver.js";
 import type { Logger } from "../ports/Logger.js";
 
@@ -24,7 +26,10 @@ export interface GamepadServerOptions {
   port: number;
   host?: string;
   pin: string;
-  driver: InputDriver;
+  /** Keyboard/mouse output. Exactly one of `driver` and `gamepad` is required. */
+  driver?: InputDriver | undefined;
+  /** Virtual pad output; buttons and sticks become pad reports, no mouse motion. */
+  gamepad?: GamepadDriver | undefined;
   logger: Logger;
   /** Left stick deadzone (vector magnitude). */
   deadzone: number;
@@ -61,6 +66,8 @@ interface Session {
   /** Last right-stick vector, re-applied when sensitivity changes. */
   right: { x: number; y: number };
   remote: string;
+  /** Set in gamepad mode; then `state` and `motion` stay idle. */
+  pad: PadOutput | undefined;
 }
 
 interface PendingApproval {
@@ -74,7 +81,7 @@ interface PendingApproval {
 
 /**
  * WebSocket transport: PIN pairing, a single active controller, and
- * translation of protocol messages into InputDriver calls.
+ * translation of protocol messages into InputDriver or GamepadDriver calls.
  */
 export class WebSocketGamepadServer {
   private wss: WebSocketServer | undefined;
@@ -85,8 +92,13 @@ export class WebSocketGamepadServer {
   private readonly approvalTimeoutMs: number;
   private readonly tickIntervalMs: number;
   private readonly now: () => number;
+  private readonly keys: InputDriver | undefined;
 
   constructor(private readonly options: GamepadServerOptions) {
+    if ((options.driver === undefined) === (options.gamepad === undefined)) {
+      throw new Error("WebSocketGamepadServer needs exactly one of driver (keyboard/mouse) or gamepad");
+    }
+    this.keys = options.driver;
     this.helloTimeoutMs = options.helloTimeoutMs ?? 5000;
     this.approvalTimeoutMs = options.approvalTimeoutMs ?? 30_000;
     this.tickIntervalMs = options.tickIntervalMs ?? 8;
@@ -303,6 +315,7 @@ export class WebSocketGamepadServer {
       lastTick: 0,
       right: { x: 0, y: 0 },
       remote,
+      pad: this.options.gamepad ? new PadOutput(this.options.gamepad) : undefined,
     };
     this.active = session;
     send(socket, { t: "welcome" });
@@ -310,6 +323,19 @@ export class WebSocketGamepadServer {
   }
 
   private handleMessage(session: Session, message: ClientMessage | null): void {
+    if (session.pad) {
+      const pad = session.pad;
+      switch (message?.t) {
+        case "btn":
+          this.drivePad(() => pad.button(message.id, message.down));
+          return;
+        case "stick":
+          this.drivePad(() => pad.stick(message.id, message.x, message.y));
+          return;
+        case "mapping":
+          return; // Key mappings and mouse sensitivity do not apply to a virtual pad.
+      }
+    }
     switch (message?.t) {
       case "btn":
         this.apply(session.state.setButton(message.id, message.down));
@@ -353,7 +379,7 @@ export class WebSocketGamepadServer {
     session.lastTick = now;
     if (dx === 0 && dy === 0) return;
     try {
-      this.options.driver.moveMouseBy(dx, dy);
+      this.keys?.moveMouseBy(dx, dy);
     } catch (error) {
       this.options.logger.warn(`Mouse move failed: ${errorMessage(error)}`);
     }
@@ -368,6 +394,7 @@ export class WebSocketGamepadServer {
     this.stopTicker(session);
     session.motion.setVector(0, 0);
     this.apply(session.state.releaseAll());
+    if (session.pad) this.drivePad(() => session.pad?.releaseAll());
     if (this.active !== session) return;
     this.active = undefined;
     this.emitStatus();
@@ -383,10 +410,18 @@ export class WebSocketGamepadServer {
     }
   }
 
-  private apply(actions: readonly KeyAction[]): void {
-    if (actions.length === 0) return;
+  private drivePad(action: () => void): void {
     try {
-      dispatchKeyActions(this.options.driver, actions);
+      action();
+    } catch (error) {
+      this.options.logger.warn(`Gamepad driver failed: ${errorMessage(error)}`);
+    }
+  }
+
+  private apply(actions: readonly KeyAction[]): void {
+    if (actions.length === 0 || !this.keys) return;
+    try {
+      dispatchKeyActions(this.keys, actions);
     } catch (error) {
       this.options.logger.warn(`Input driver failed: ${errorMessage(error)}`);
     }

@@ -8,7 +8,27 @@ describe("parseConfig", () => {
     expect(config.pin).toMatch(/^\d{6}$/);
     expect(config.dryRun).toBe(false);
     expect(config.sensitivity).toBeGreaterThan(0);
+    expect(config.driver).toBe("auto");
   });
+
+  it.each(["auto", "gamepad", "keyboard"] as const)("reads --driver=%s", (driver) => {
+    expect(parseConfig([`--driver=${driver}`], {}).driver).toBe(driver);
+  });
+
+  it("reads GAMEPAD_DRIVER and lets the flag win", () => {
+    expect(parseConfig([], { GAMEPAD_DRIVER: "keyboard" }).driver).toBe("keyboard");
+    expect(parseConfig(["--driver=gamepad", "--dry-run"], { GAMEPAD_DRIVER: "keyboard" })).toMatchObject({
+      driver: "gamepad",
+      dryRun: true,
+    });
+  });
+
+  it.each([[["--driver=xinput"], {}], [[], { GAMEPAD_DRIVER: "joystick" }], [["--driver="], {}]])(
+    "rejects an unknown driver (%j %j)",
+    (argv, env) => {
+      expect(() => parseConfig(argv, env)).toThrow(/auto, gamepad or keyboard/);
+    },
+  );
 
   it("reads port, PIN and sensitivity from the environment", () => {
     const config = parseConfig([], { GAMEPAD_PORT: "9000", GAMEPAD_PIN: "012345", GAMEPAD_SENSITIVITY: "800" });

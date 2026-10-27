@@ -2,6 +2,8 @@ import { DEFAULT_MAPPING, type ServerMessage } from "@gamepad/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 import { type GamepadServerOptions, WebSocketGamepadServer } from "../src/adapters/WebSocketGamepadServer.js";
+import { NEUTRAL_PAD } from "../src/domain/PadState.js";
+import { FakeGamepadDriver } from "./FakeGamepadDriver.js";
 import { FakeInputDriver } from "./FakeInputDriver.js";
 
 const PIN = "246810";
@@ -205,6 +207,99 @@ describe("WebSocketGamepadServer", () => {
       client.send({ t: "stick", id: "R", x: 1, y: 0 });
       await vi.waitFor(() => expect(driver.moves.length).toBeGreaterThan(2));
       expect(new Set(driver.moves.map(([dx]) => dx))).toEqual(new Set([5]));
+      client.ws.close();
+    });
+  });
+
+  describe("gamepad mode", () => {
+    let pad: FakeGamepadDriver;
+
+    async function startPadServer(): Promise<number> {
+      pad = new FakeGamepadDriver();
+      return startServer({ driver: undefined, gamepad: pad });
+    }
+
+    it("refuses to start without exactly one output driver", () => {
+      const base = { port: 0, pin: PIN, logger: silent, deadzone: 0.3, mouse: { deadzone: 0.1, sensitivity: 1, exponent: 1 } };
+      expect(() => new WebSocketGamepadServer(base)).toThrow(/exactly one/);
+      expect(
+        () => new WebSocketGamepadServer({ ...base, driver: new FakeInputDriver(), gamepad: new FakeGamepadDriver() }),
+      ).toThrow(/exactly one/);
+    });
+
+    it("turns buttons, triggers and sticks into pad reports instead of keys", async () => {
+      const client = await pair(await startPadServer());
+      client.send({ t: "btn", id: "a", down: true });
+      client.send({ t: "btn", id: "r2", down: true });
+      client.send({ t: "stick", id: "L", x: 0.5, y: -1 });
+      client.send({ t: "stick", id: "R", x: 1, y: 0 });
+      await vi.waitFor(() => expect(pad.updates).toHaveLength(4));
+      expect(pad.last()).toEqual({
+        buttons: new Set(["a"]),
+        leftStick: { x: 0.5, y: 1 },
+        rightStick: { x: 1, y: 0 },
+        leftTrigger: 0,
+        rightTrigger: 1,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(driver.calls).toEqual([]);
+      expect(driver.moves).toEqual([]);
+      client.ws.close();
+    });
+
+    it("skips reports when the state did not change", async () => {
+      const client = await pair(await startPadServer());
+      client.send({ t: "btn", id: "a", down: true });
+      client.send({ t: "btn", id: "a", down: true });
+      client.send({ t: "stick", id: "L", x: 0, y: 0 });
+      client.send({ t: "ping", ts: 1 });
+      await vi.waitFor(() => expect(client.messages).toContainEqual({ t: "pong", ts: 1 }));
+      expect(pad.updates).toHaveLength(1);
+      client.ws.close();
+    });
+
+    it("accepts mapping messages without touching the pad", async () => {
+      const client = await pair(await startPadServer());
+      client.send({ t: "mapping", mapping: DEFAULT_MAPPING, mouseSensitivity: 900 });
+      client.send({ t: "ping", ts: 2 });
+      await vi.waitFor(() => expect(client.messages).toContainEqual({ t: "pong", ts: 2 }));
+      expect(client.messages).not.toContainEqual({ t: "error", code: "bad_message" });
+      expect(pad.updates).toEqual([]);
+      client.ws.close();
+    });
+
+    it("sends a neutral report on disconnect", async () => {
+      const client = await pair(await startPadServer());
+      client.send({ t: "btn", id: "x", down: true });
+      client.send({ t: "stick", id: "R", x: 1, y: 1 });
+      await vi.waitFor(() => expect(pad.updates).toHaveLength(2));
+      client.ws.close();
+      await vi.waitFor(() => expect(pad.last()).toEqual(NEUTRAL_PAD));
+    });
+
+    it("sends a neutral report when the server stops", async () => {
+      const client = await pair(await startPadServer());
+      client.send({ t: "btn", id: "start", down: true });
+      await vi.waitFor(() => expect(pad.updates).toHaveLength(1));
+      await server?.stop();
+      server = undefined;
+      expect(pad.last()).toEqual(NEUTRAL_PAD);
+      await client.closed;
+    });
+
+    it("logs and survives a failing pad driver", async () => {
+      const warnings: string[] = [];
+      pad = new FakeGamepadDriver();
+      pad.update = () => {
+        throw new Error("device gone");
+      };
+      const client = await pair(
+        await startServer({ driver: undefined, gamepad: pad, logger: { info: () => {}, warn: (m) => warnings.push(m) } }),
+      );
+      client.send({ t: "btn", id: "a", down: true });
+      client.send({ t: "ping", ts: 3 });
+      await vi.waitFor(() => expect(client.messages).toContainEqual({ t: "pong", ts: 3 }));
+      expect(warnings.some((w) => w.includes("device gone"))).toBe(true);
       client.ws.close();
     });
   });

@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto";
+import { DRIVER_REQUESTS, type DriverRequest } from "./application/selectDriver.js";
 
 export const DEFAULT_PORT = 7531;
 /** Cursor speed in pixels per second at full right-stick deflection. */
@@ -9,9 +10,11 @@ export interface ServerConfig {
   pin: string;
   dryRun: boolean;
   sensitivity: number;
+  driver: DriverRequest;
 }
 
 const KNOWN_FLAGS = new Set(["--dry-run"]);
+const DRIVER_FLAG = "--driver=";
 
 function parsePort(value: string | undefined): number {
   if (value === undefined) return DEFAULT_PORT;
@@ -37,8 +40,14 @@ function parseSensitivity(value: string | undefined): number {
   return sensitivity;
 }
 
+function parseDriver(value: string | undefined): DriverRequest {
+  if (value === undefined) return "auto";
+  if ((DRIVER_REQUESTS as readonly string[]).includes(value)) return value as DriverRequest;
+  throw new Error(`Driver must be auto, gamepad or keyboard, got "${value}"`);
+}
+
 export function parseConfig(argv: readonly string[], env: Readonly<Record<string, string | undefined>>): ServerConfig {
-  const unknown = argv.filter((arg) => !KNOWN_FLAGS.has(arg));
+  const unknown = argv.filter((arg) => !KNOWN_FLAGS.has(arg) && !arg.startsWith(DRIVER_FLAG));
   if (unknown.length > 0) throw new Error(`Unknown argument(s): ${unknown.join(" ")}`);
 
   return {
@@ -46,5 +55,9 @@ export function parseConfig(argv: readonly string[], env: Readonly<Record<string
     pin: parsePin(env.GAMEPAD_PIN),
     dryRun: argv.includes("--dry-run"),
     sensitivity: parseSensitivity(env.GAMEPAD_SENSITIVITY),
+    // The flag wins over the environment; the last flag wins over earlier ones.
+    driver: parseDriver(
+      argv.findLast((arg) => arg.startsWith(DRIVER_FLAG))?.slice(DRIVER_FLAG.length) ?? env.GAMEPAD_DRIVER,
+    ),
   };
 }

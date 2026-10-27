@@ -28,6 +28,7 @@ async function startServer(overrides: Partial<GamepadServerOptions> = {}): Promi
       port,
       pin: PIN,
       mode: "dry-run",
+      driver: { kind: "keyboard", name: "Keyboard / mouse" },
       controller: server?.controllerStatus() ?? { connected: false, remoteAddress: null },
       pending: server?.pendingRequest() ?? null,
     }),

@@ -17,6 +17,7 @@ const snapshot = (): HostStatusSnapshot => ({
   port: 7531,
   pin: PIN,
   mode: "dry-run",
+  driver: { kind: "gamepad", name: "Virtual Xbox 360 pad (dry run)" },
   controller: { connected: false, remoteAddress: null },
   pending: null,
 });
@@ -145,6 +146,8 @@ describe("renderHostStatusPage", () => {
     expect(html).toContain(PIN);
     expect(html).toContain("192.168.1.20:7531");
     expect(html).toContain("Dry run");
+    expect(html).toContain("Virtual Xbox 360 pad (dry run)");
+    expect(html).toContain('id="driver"');
     expect(html).toContain("EventSource");
   });
 

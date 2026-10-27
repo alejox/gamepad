@@ -21,6 +21,7 @@ async function startServer(): Promise<number> {
       port,
       pin: PIN,
       mode: "dry-run",
+      driver: { kind: "gamepad", name: "Virtual Xbox 360 pad (dry run)" },
       controller: server?.controllerStatus() ?? { connected: false, remoteAddress: null },
       pending: server?.pendingRequest() ?? null,
     }),

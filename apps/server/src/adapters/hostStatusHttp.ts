@@ -7,6 +7,13 @@ import type { HttpRequestHandler } from "./WebSocketGamepadServer.js";
 
 export type HostMode = "dry-run" | "emulation";
 
+/** The output driver in use: a virtual pad or keyboard/mouse emulation. */
+export interface HostDriver {
+  kind: "gamepad" | "keyboard";
+  /** Display name, e.g. "Keyboard / mouse". */
+  name: string;
+}
+
 /** Everything the host status page shows. Contains the PIN: loopback only. */
 export interface HostStatusSnapshot {
   /** Reachable `ip:port` addresses for the phone. */
@@ -14,6 +21,7 @@ export interface HostStatusSnapshot {
   port: number;
   pin: string;
   mode: HostMode;
+  driver: HostDriver;
   controller: ControllerStatus;
   /** Phone waiting for Allow / Deny, or null. */
   pending: PendingRequest | null;

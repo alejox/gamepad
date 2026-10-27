@@ -3,7 +3,7 @@ import type { HostStatusSnapshot } from "./hostStatusHttp.js";
 
 const MODE_LABELS: Record<HostStatusSnapshot["mode"], string> = {
   "dry-run": "Dry run (input is only logged)",
-  emulation: "Keyboard / mouse emulation",
+  emulation: "Live (input reaches this computer)",
 };
 
 const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
@@ -35,6 +35,7 @@ const PAGE_SCRIPT = `
     }));
     $("pin").textContent = s.pin;
     $("mode").textContent = modes[s.mode] || s.mode;
+    $("driver").textContent = s.driver.name;
     const c = s.controller;
     $("dot").classList.toggle("on", c.connected);
     $("controller").textContent = c.connected
@@ -187,6 +188,7 @@ export function renderHostStatusPage(snapshot: HostStatusSnapshot): string {
     <div><dt>Address</dt><dd><ul id="addresses">${addresses}</ul></dd></div>
     <div><dt>PIN</dt><dd class="pin" id="pin">${escapeHtml(snapshot.pin)}</dd></div>
     <div><dt>Mode</dt><dd id="mode">${escapeHtml(MODE_LABELS[snapshot.mode])}</dd></div>
+    <div><dt>Driver</dt><dd id="driver">${escapeHtml(snapshot.driver.name)}</dd></div>
     <div><dt>Gamepad</dt><dd class="status"><span class="dot${connected ? " on" : ""}" id="dot"></span><span id="controller">${escapeHtml(controllerText(snapshot))}</span></dd></div>
   </dl>
 </main>
